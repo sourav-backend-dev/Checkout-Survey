@@ -1,0 +1,233 @@
+import {
+  reactExtension,
+  BlockStack,
+  View,
+  Heading,
+  Text,
+  ChoiceList,
+  Choice,
+  Button,
+  useStorage,
+  useApi,
+  useExtension,
+  useSettings,
+} from '@shopify/ui-extensions-react/checkout';
+import { useCallback, useEffect, useState } from 'react';
+
+const orderDetailsBlock = reactExtension(
+  "customer-account.order-status.block.render",
+  () => <ProductReview />
+);
+export { orderDetailsBlock };
+
+function ProductReview() {
+  const [quizData, setQuizData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [productReview, setProductReview] = useState('');
+  const [answers, setAnswers] = useState([]); // Array to store answers
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const api = useApi();
+  const { survey_title } = useSettings();  // Get the survey title from settings
+  console.log("survey title is ", survey_title);  // Log survey title
+  const userEmail = api.buyerIdentity.email.current;
+
+  const [{ data: productReviewed, loading: productReviewedLoading }] = useStorageState('product-reviewed');
+
+  // Fetch quiz data
+  const fetchQuizData = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`https://scanned-nightmare-gazette-afghanistan.trycloudflare.com/app/questions`);
+      const data = await response.json();
+      console.log("DATA ", data);
+      if (response.ok) {
+        // Filter the quiz data based on survey title from settings
+        const quiz = data.surveys.find(survey => survey.title === survey_title);
+        if (quiz) {
+          setQuizData(quiz);  // Set the quiz data only for the matching title
+        } else {
+          console.error(`No quiz found for the survey title: ${survey_title}`);
+        }
+      } else {
+        console.error("Error fetching quiz data:", data.error);
+      }
+    } catch (error) {
+      console.error("Failed to fetch quiz data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchQuizData();
+  }, [survey_title]);  // Re-run the fetch if survey_title changes
+
+  // Handle quiz submission
+  async function handleSubmit() {
+    setLoading(true);
+    try {
+      const response = await fetch('https://scanned-nightmare-gazette-afghanistan.trycloudflare.com/api/proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: userEmail, answers }), // Send email along with answers
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit review');
+      }
+
+      const result = await response.json();
+      console.log('Server response:', result);
+    } catch (error) {
+      console.error("Error submitting review:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (productReviewed || productReviewedLoading) {
+    return null; // Don't show survey if product is already reviewed
+  }
+
+  const currentQuestion = quizData ? quizData.questions[currentQuestionIndex] : null;
+
+  // Handle choice change for questions
+  const handleChoiceChange = (selectedValue) => {
+    console.log('Selected value:', selectedValue); // Log selected choice ID
+    const selectedOption = currentQuestion.answers.find(option => option.id === parseInt(selectedValue));
+    if (selectedOption) {
+      setProductReview(selectedValue); // Update the selected value in state
+  
+      // Use a functional update for answers to avoid stale state
+      setAnswers((prevAnswers) => {
+        const updatedAnswers = [...prevAnswers];
+        updatedAnswers[currentQuestionIndex] = {
+          questionTitle: currentQuestion.text,
+          questionNumber: currentQuestionIndex + 1,
+          answer: selectedOption.text,
+        };
+        console.log('Updated answers:', updatedAnswers); // Log updated answers
+        return updatedAnswers;
+      });
+    }
+  };
+
+  console.log(answers);
+
+  // Handle Next Question navigation
+  const handleNext = () => {
+    if (currentQuestionIndex < quizData.questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    }
+  };
+
+  // Handle Previous Question navigation
+  const handlePrevious = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+  };
+
+  return (
+    <Survey
+      title="How do you like your purchase?"
+      description="We would like to learn if you are enjoying your purchase."
+      onSubmit={handleSubmit}
+      loading={loading}
+    >
+      {currentQuestion ? (
+        <>
+          <ChoiceList
+            name={`quiz-response-${currentQuestionIndex}`}
+            value={productReview}
+            onChange={(selectedValue) => {
+              setProductReview(selectedValue); // Ensure productReview is updated
+              handleChoiceChange(selectedValue); // Update answers array
+            }}
+          >
+            <BlockStack>
+              <Text>{currentQuestion.text}</Text>
+              {currentQuestion.answers.map((option, optIndex) => (
+                <Choice key={optIndex} id={option.id.toString()}>
+                  {option.text}
+                </Choice>
+              ))}
+            </BlockStack>
+          </ChoiceList>
+
+          <BlockStack>
+            <Button kind="secondary" onPress={handlePrevious} disabled={currentQuestionIndex === 0}>
+              Previous
+            </Button>
+            <Button kind="primary" onPress={handleNext} disabled={currentQuestionIndex === quizData.questions.length - 1}>
+              Next
+            </Button>
+          </BlockStack>
+        </>
+      ) : (
+        <Text>Loading quiz...</Text>
+      )}
+    </Survey>
+  );
+}
+
+// Survey component for wrapping the quiz UI
+function Survey({ title, description, onSubmit, children, loading }) {
+  const [submitted, setSubmitted] = useState(false);
+
+  async function handleSubmit() {
+    await onSubmit();
+    setSubmitted(true);
+  }
+
+  if (submitted) {
+    return (
+      <View border="base" padding="base" borderRadius="base">
+        <BlockStack>
+          <Heading>Thanks for your feedback!</Heading>
+          <Text>Your response has been submitted</Text>
+        </BlockStack>
+      </View>
+    );
+  }
+
+  return (
+    <View border="base" padding="base" borderRadius="base">
+      <BlockStack>
+        <Heading>{title}</Heading>
+        <Text>{description}</Text>
+        {children}
+        <Button kind="secondary" onPress={handleSubmit} loading={loading}>
+          Submit feedback
+        </Button>
+      </BlockStack>
+    </View>
+  );
+}
+
+function useStorageState(key) {
+  const storage = useStorage();
+  const [data, setData] = useState();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function queryStorage() {
+      const value = await storage.read(key);
+      setData(value);
+      setLoading(false);
+    }
+
+    queryStorage();
+  }, [setData, setLoading, storage, key]);
+
+  const setStorage = useCallback(
+    (value) => {
+      storage.write(key, value);
+    },
+    [storage, key]
+  );
+
+  return [{ data, loading }, setStorage];
+}

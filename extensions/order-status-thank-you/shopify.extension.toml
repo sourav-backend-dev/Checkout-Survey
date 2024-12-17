@@ -1,0 +1,28 @@
+api_version = "2024-07"
+
+[capabilities]
+api_access = true
+network_access = true
+
+
+[[extensions]]
+type = "ui_extension"
+name = "order-status-thank-you"
+handle = "order-status-thank-you"
+
+  [extensions.settings]
+    [[extensions.settings.fields]]
+    key = "survey_title"
+    type = "single_line_text_field"
+    name = "Survey title"
+    description = "Enter a title for the survey."
+    
+[extensions.capabilities]
+api_access = true
+network_access = true
+
+[[extensions.targeting]]
+target = "customer-account.order-status.block.render"
+module = "./src/Checkout.jsx"
+export = "orderDetailsBlock"
+
