@@ -4,13 +4,13 @@ import { json } from "@remix-run/node";
 // Initialize Prisma client
 const prisma = new PrismaClient();
 
-export const loader = async () => {
+export const loader = async ({ request }) => {
   // Fetch all surveys
   const surveys = await prisma.survey.findMany({
     include: {
       questions: {
         include: {
-          answers: true, // Include the related answers for each question
+          answers: true,
         },
       },
     },
@@ -21,6 +21,30 @@ export const loader = async () => {
     return json({ error: "No surveys found" }, { status: 404 });
   }
 
-  // Return the surveys data as JSON
-  return json({ surveys });
+  const response = json({ surveys });
+
+  return response;
+};
+
+
+export const action = async ({ request }) => {
+  // Fetch all surveys
+  const surveys = await prisma.survey.findMany({
+    include: {
+      questions: {
+        include: {
+          answers: true,
+        },
+      },
+    },
+  });
+
+  // If no surveys are found, return a 404 error
+  if (surveys.length === 0) {
+    return json({ error: "No surveys found" }, { status: 404 });
+  }
+
+  const response = json({ surveys });
+
+  return response;
 };

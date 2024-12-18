@@ -22,7 +22,7 @@ api_access = true
 network_access = true
 
 [[extensions.targeting]]
-target = "customer-account.order-status.block.render"
+target = "purchase.thank-you.block.render"
 module = "./src/Checkout.jsx"
 export = "orderDetailsBlock"
 

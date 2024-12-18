@@ -15,7 +15,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 
 const orderDetailsBlock = reactExtension(
-  "customer-account.order-status.block.render",
+  "purchase.thank-you.block.render",
   () => <ProductReview />
 );
 export { orderDetailsBlock };
@@ -37,7 +37,12 @@ function ProductReview() {
   const fetchQuizData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`https://scanned-nightmare-gazette-afghanistan.trycloudflare.com/app/questions`);
+      const response = await fetch('https://versus-fabrics-areas-thirty.trycloudflare.com/app/questions', {
+        method: 'POST',  // Set the method to POST
+        headers: {
+          'Content-Type': 'application/json',  // Set Content-Type header, even if no data is being sent
+        },
+      });      
       const data = await response.json();
       console.log("DATA ", data);
       if (response.ok) {
@@ -66,7 +71,7 @@ function ProductReview() {
   async function handleSubmit() {
     setLoading(true);
     try {
-      const response = await fetch('https://scanned-nightmare-gazette-afghanistan.trycloudflare.com/api/proxy', {
+      const response = await fetch('https://versus-fabrics-areas-thirty.trycloudflare.com/api/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
