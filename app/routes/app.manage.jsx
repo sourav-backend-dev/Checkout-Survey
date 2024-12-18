@@ -12,10 +12,13 @@ import {
 import { TitleBar } from "@shopify/app-bridge-react";
 import { json, useLoaderData } from "@remix-run/react";
 import { useState, useMemo } from "react";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // Loader to fetch data
 export const loader = async () => {
-  const feedbacks = await prisma.ApiProxyData.findMany();
+  const feedbacks = await prisma.apiProxyData.findMany();
   return json({ feedbacks });
 };
 
