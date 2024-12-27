@@ -17,16 +17,16 @@ scopes = "read_products"
 
 [auth]
 redirect_urls = [
-  "https://versus-fabrics-areas-thirty.trycloudflare.com/auth/callback",
-  "https://versus-fabrics-areas-thirty.trycloudflare.com/auth/shopify/callback",
-  "https://versus-fabrics-areas-thirty.trycloudflare.com/api/auth/callback"
+  "https://survey.hatley.com/auth/callback",
+  "https://survey.hatley.com/auth/shopify/callback",
+  "https://survey.hatley.com/api/auth/callback"
 ]
 
 [webhooks]
 api_version = "2024-10"
 
 [app_proxy]
-url = "https://versus-fabrics-areas-thirty.trycloudflare.com/app/questions"
+url = "https://survey.hatley.com/app/questions"
 subpath = "questions"
 prefix = "apps"
 

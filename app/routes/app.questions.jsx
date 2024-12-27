@@ -18,14 +18,22 @@ export const loader = async ({ request }) => {
 
   // If no surveys are found, return a 404 error
   if (surveys.length === 0) {
-    return json({ error: "No surveys found" }, { status: 404 });
+    return new Response(JSON.stringify({ error: "No surveys found" }), {
+      status: 404,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   }
 
-  const response = json({ surveys });
-
-  return response;
+  return new Response(JSON.stringify({ surveys }), {
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
 };
-
 
 export const action = async ({ request }) => {
   // Fetch all surveys
@@ -41,10 +49,19 @@ export const action = async ({ request }) => {
 
   // If no surveys are found, return a 404 error
   if (surveys.length === 0) {
-    return json({ error: "No surveys found" }, { status: 404 });
+    return new Response(JSON.stringify({ error: "No surveys found" }), {
+      status: 404,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   }
 
-  const response = json({ surveys });
-
-  return response;
+  return new Response(JSON.stringify({ surveys }), {
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
 };
