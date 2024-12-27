@@ -8,15 +8,18 @@ import {
   InlineStack,
   Box,
   BlockStack,
+  Modal,
+  Button,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
 import { json, useLoaderData } from "@remix-run/react";
 import { useState, useMemo } from "react";
 import { PrismaClient } from "@prisma/client";
+import { ExportIcon } from "@shopify/polaris-icons";
+import * as XLSX from "xlsx";
 
 const prisma = new PrismaClient();
 
-// Loader to fetch data
 export const loader = async () => {
   const feedbacks = await prisma.apiProxyData.findMany();
   return json({ feedbacks });
@@ -24,8 +27,8 @@ export const loader = async () => {
 
 export default function AdditionalPage() {
   const data = useLoaderData();
-
-  // Parse the initial feedbacks
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState("");
   const initialFeedbacks = data.feedbacks.map((feedback) => ({
     id: feedback.id.toString(),
     email: feedback.email,
@@ -33,33 +36,27 @@ export default function AdditionalPage() {
     answers: JSON.parse(feedback.answers),
   }));
 
-  // State for search and sort
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("asc");
 
-  // Search handler
   const handleSearchChange = (value) => setSearchTerm(value);
 
-  // Sort handler
   const handleSortChange = (value) => {
     const [field, order] = value.split("-");
     setSortField(field);
     setSortOrder(order);
   };
 
-  // Filtered and Sorted Feedbacks
   const filteredFeedbacks = useMemo(() => {
     let result = initialFeedbacks;
 
-    // Search filter
     if (searchTerm) {
       result = result.filter((feedback) =>
         feedback.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Sorting
     result = result.sort((a, b) => {
       if (sortField === "email") {
         return sortOrder === "asc"
@@ -76,11 +73,64 @@ export default function AdditionalPage() {
     return result;
   }, [searchTerm, sortField, sortOrder, initialFeedbacks]);
 
+  const handleExport = () => {
+    if (exportFormat === "excel") {
+      const worksheet = XLSX.utils.json_to_sheet(
+        filteredFeedbacks.map((feedback) => ({
+          ID: feedback.id,
+          Email: feedback.email,
+          CreatedAt: feedback.createdAt,
+          Answers: feedback.answers
+            .map((ans) => `${ans.questionTitle}: ${ans.answer}`)
+            .join("; "),
+        }))
+      );
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Feedbacks");
+      XLSX.writeFile(workbook, "feedbacks.xlsx");
+    } else if (exportFormat === "csv") {
+      const csvContent = filteredFeedbacks.map((feedback) => ({
+        ID: feedback.id,
+        Email: feedback.email,
+        CreatedAt: feedback.createdAt,
+        Answers: feedback.answers
+          .map((ans) => `${ans.questionTitle}: ${ans.answer}`)
+          .join("; "),
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(csvContent);
+      const csvData = XLSX.utils.sheet_to_csv(worksheet);
+      const blob = new Blob([csvData], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "feedbacks.csv";
+      a.click();
+    } else if (exportFormat === "json") {
+      const jsonData = JSON.stringify(filteredFeedbacks, null, 2);
+      const blob = new Blob([jsonData], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "feedbacks.json";
+      a.click();
+    }
+
+    setIsModalOpen(false);
+    setExportFormat("");
+  };
+
   return (
-    <Page>
-      <TitleBar title="Manage User Dashboard" />
+    <Page
+      title="Manage User Dashboard"
+      backAction={{ content: "Back", url: "/app/" }}
+      primaryAction={{
+        content: "Export",
+        icon: ExportIcon,
+        disabled: filteredFeedbacks.length === 0,
+        onAction: () => setIsModalOpen(true),
+      }}
+    >
       <Card>
-        {/* Search and Sort Filters */}
         <BlockStack gap={400}>
           <InlineStack alignment="center" gap={400}>
             <Box width="73%">
@@ -104,8 +154,6 @@ export default function AdditionalPage() {
               />
             </Box>
           </InlineStack>
-
-          {/* Index Table */}
           <IndexTable
             resourceName={{ singular: "feedback", plural: "feedbacks" }}
             itemCount={filteredFeedbacks.length}
@@ -134,6 +182,37 @@ export default function AdditionalPage() {
           </IndexTable>
         </BlockStack>
       </Card>
+      {isModalOpen && (
+        <Modal
+          open={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          title="Export Feedbacks"
+          primaryAction={{
+            content: "Export",
+            onAction: handleExport,
+            disabled: !exportFormat,
+          }}
+          secondaryActions={[
+            {
+              content: "Cancel",
+              onAction: () => setIsModalOpen(false),
+            },
+          ]}
+        >
+          <Modal.Section>
+            <Select
+              label="Select Export Format"
+              options={[
+                { label: "Excel", value: "excel" },
+                { label: "CSV", value: "csv" },
+                { label: "JSON", value: "json" },
+              ]}
+              value={exportFormat}
+              onChange={(value) => setExportFormat(value)}
+            />
+          </Modal.Section>
+        </Modal>
+      )}
     </Page>
   );
 }
