@@ -37,10 +37,10 @@ function ProductReview() {
   const fetchQuizData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://madrid-refugees-reverse-herself.trycloudflare.com/app/questions', {
+      const response = await fetch('https://survey.hatley.com/app/questions', {
         method: 'GET',  // Set the method to POST
         headers: {
-          'Content-Type': 'application/json',  // Set Content-Type header, even if no data is being sent
+          'Content-Type': 'application/json', 
         },
       });      
       const data = await response.json();

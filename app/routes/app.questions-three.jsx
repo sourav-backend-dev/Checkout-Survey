@@ -6,7 +6,7 @@ import { authenticate } from "../shopify.server";
 const prisma = new PrismaClient();
 
 export const loader = async ({ request }) => {
-  const { cors } = await authenticate.public.checkout(request);
+  const { cors } = await authenticate.public.appProxy(request);
   // Fetch all surveys
   const surveys = await prisma.survey.findMany({
     include: {
@@ -30,7 +30,7 @@ export const loader = async ({ request }) => {
 
 
 export const action = async ({ request }) => {
-  const { cors } = await authenticate.public.checkout(request);
+  const { cors } = await authenticate.public.appProxy(request);
   // Fetch all surveys
   const surveys = await prisma.survey.findMany({
     include: {
