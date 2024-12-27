@@ -4,20 +4,20 @@ const prisma = new PrismaClient();
 
 export const action = async ({ request }) => {
   console.log("Action called!");
-  // Handle CORS preflight request
-  if (request.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204, // No Content
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    });
-  }
-
 
   try {
+    // Handle CORS preflight request
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204, // No Content
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      });
+    }
+
     // Parse the incoming POST request body
     const data = await request.json();
     console.log("Received data:", data);
@@ -37,9 +37,9 @@ export const action = async ({ request }) => {
       // Now create the answer in the UserAnswer table
       return prisma.userAnswer.create({
         data: {
-          userEmail: data.email,
+          userEmail: data.email, 
           questionId: question.id,
-          answerText: answer.answer,
+          answerText: answer.answer, 
         },
       });
     });
@@ -51,7 +51,7 @@ export const action = async ({ request }) => {
     await prisma.apiProxyData.create({
       data: {
         email: data.email,
-        answers: JSON.stringify(data.answers),
+        answers: JSON.stringify(data.answers), 
       },
     });
 
@@ -65,7 +65,7 @@ export const action = async ({ request }) => {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Origin": "*", // Allow all origins
         },
       }
     );
@@ -81,7 +81,7 @@ export const action = async ({ request }) => {
         status: 500,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Origin": "*", // Allow all origins
         },
       }
     );

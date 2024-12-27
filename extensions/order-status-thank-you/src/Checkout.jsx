@@ -37,7 +37,7 @@ function ProductReview() {
   const fetchQuizData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://survey.hatley.com/app/questions', {
+      const response = await fetch('https://survey.hatley.com/app/questions-two', {
         method: 'GET',  // Set the method to POST
         headers: {
           'Content-Type': 'application/json', 

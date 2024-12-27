@@ -3,7 +3,7 @@
 client_id = "cfc47f6268e562d54e62fde004e7c70e"
 name = "Hatley Survey"
 handle = "hatley-survey-3"
-application_url = "https://madrid-refugees-reverse-herself.trycloudflare.com"
+application_url = "https://survey.hatley.com"
 embedded = true
 
 [build]
@@ -17,13 +17,18 @@ scopes = ""
 
 [auth]
 redirect_urls = [
-  "https://madrid-refugees-reverse-herself.trycloudflare.com/auth/callback",
-  "https://madrid-refugees-reverse-herself.trycloudflare.com/auth/shopify/callback",
-  "https://madrid-refugees-reverse-herself.trycloudflare.com/api/auth/callback"
+  "https://survey.hatley.com/auth/callback",
+  "https://survey.hatley.com/auth/shopify/callback",
+  "https://survey.hatley.com/api/auth/callback"
 ]
 
 [webhooks]
 api_version = "2024-10"
+
+[app_proxy]
+url = "https://survey.hatley.com/app/questions-three"
+subpath = "questions"
+prefix = "apps"
 
 [pos]
 embedded = false
