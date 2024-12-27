@@ -37,8 +37,8 @@ function ProductReview() {
   const fetchQuizData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://survey.hatley.com/app/questions-two', {
-        method: 'GET',  // Set the method to POST
+      const response = await fetch('https://survey.hatley.com/app/questions', {
+        method: 'POST',  // Set the method to POST
         headers: {
           'Content-Type': 'application/json', 
         },
@@ -71,7 +71,7 @@ function ProductReview() {
   async function handleSubmit() {
     setLoading(true);
     try {
-      const response = await fetch('https://madrid-refugees-reverse-herself.trycloudflare.com/api/proxy', {
+      const response = await fetch('https://survey.hatley.com/api/submitSurvey', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
