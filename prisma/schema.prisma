@@ -38,12 +38,16 @@ model Survey {
 }
 
 model Question {
-  id        Int       @id @default(autoincrement())
-  text      String
-  surveyId  Int
-  survey    Survey    @relation(fields: [surveyId], references: [id])
-  answers   Answer[]
+  id             Int       @id @default(autoincrement())
+  text           String
+  surveyId       Int
+  survey         Survey    @relation(fields: [surveyId], references: [id])
+  answers        Answer[]
+  isMultiChoice  Boolean   @default(false) // New field for multi-choice support
+  isConditional  Boolean   @default(false) // If this question controls conditional logic
+  conditionAnswer String?  // The answer required to show the next question
 }
+
 
 model Answer {
   id        Int      @id @default(autoincrement())

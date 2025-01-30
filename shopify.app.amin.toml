@@ -3,7 +3,7 @@
 client_id = "cfc47f6268e562d54e62fde004e7c70e"
 name = "Hatley Survey"
 handle = "hatley-survey-3"
-application_url = "https://mi-bubble-charms-virgin.trycloudflare.com"
+application_url = "https://price-projection-mali-riding.trycloudflare.com"
 embedded = true
 
 [build]
@@ -17,16 +17,16 @@ scopes = ""
 
 [auth]
 redirect_urls = [
-  "https://mi-bubble-charms-virgin.trycloudflare.com/auth/callback",
-  "https://mi-bubble-charms-virgin.trycloudflare.com/auth/shopify/callback",
-  "https://mi-bubble-charms-virgin.trycloudflare.com/api/auth/callback"
+  "https://price-projection-mali-riding.trycloudflare.com/auth/callback",
+  "https://price-projection-mali-riding.trycloudflare.com/auth/shopify/callback",
+  "https://price-projection-mali-riding.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]
 api_version = "2024-10"
 
 [app_proxy]
-url = "https://mi-bubble-charms-virgin.trycloudflare.com/app/questions-three"
+url = "https://price-projection-mali-riding.trycloudflare.com/app/questions-three"
 subpath = "questions"
 prefix = "apps"
 

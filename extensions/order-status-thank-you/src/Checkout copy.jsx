@@ -37,7 +37,7 @@ function ProductReview() {
   const fetchQuizData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://price-projection-mali-riding.trycloudflare.com/app/questions', {
+      const response = await fetch('https://programs-skiing-washing-solved.trycloudflare.com/app/questions', {
         method: 'GET',  // Set the method to POST
         headers: {
           'Content-Type': 'application/json', 
@@ -71,7 +71,7 @@ function ProductReview() {
   async function handleSubmit() {
     setLoading(true);
     try {
-      const response = await fetch('https://price-projection-mali-riding.trycloudflare.com/app/proxy', {
+      const response = await fetch('https://programs-skiing-washing-solved.trycloudflare.com/app/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +100,7 @@ function ProductReview() {
 
   // Handle choice change for questions
   const handleChoiceChange = (selectedValue) => {
-    console.log('Selected value is:', selectedValue); // Log selected choice ID
+    console.log('Selected value:', selectedValue); // Log selected choice ID
     const selectedOption = currentQuestion.answers.find(option => option.id === parseInt(selectedValue));
     if (selectedOption) {
       setProductReview(selectedValue); // Update the selected value in state

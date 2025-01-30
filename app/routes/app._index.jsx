@@ -18,9 +18,10 @@ import {
   DataTable,
   Modal,
   List,
-  Banner, // Import Banner component
+  Banner,
+  Badge, // Import Banner component
 } from "@shopify/polaris";
-import { DeleteIcon, PlusCircleIcon, SaveIcon, ViewIcon } from '@shopify/polaris-icons';
+import { DeleteIcon, EditIcon, PlusCircleIcon, SaveIcon, ViewIcon } from '@shopify/polaris-icons';
 import { TitleBar } from "@shopify/app-bridge-react";
 
 const prisma = new PrismaClient();
@@ -70,10 +71,15 @@ export const action = async ({ request }) => {
           questions: {
             create: questions.map((q) => ({
               text: q.text,
+              isMultiChoice: q.isConditional ? false : q.isMultiChoice || false,
+              isConditional: q.isConditional || false,
+              conditionAnswer: q.isConditional ? q.conditionAnswer : null,
               answers: {
-                create: q.options.map((option) => ({
-                  text: option.text,
-                })),
+                create: q.isConditional
+                  ? [{ id: 1, text: "Yes" }, { id: 2, text: "No" }]
+                  : q.options.map((option) => ({
+                    text: option.text,
+                  })),
               },
             })),
           },
@@ -82,16 +88,22 @@ export const action = async ({ request }) => {
 
       console.log("Survey updated:", updatedSurvey);
     } else {
+      // Create new survey
       const newSurvey = await prisma.survey.create({
         data: {
           title: surveyTitle,
           questions: {
             create: questions.map((q) => ({
               text: q.text,
+              isMultiChoice: q.isConditional ? false : q.isMultiChoice || false,
+              isConditional: q.isConditional || false,
+              conditionAnswer: q.isConditional ? q.conditionAnswer : null,
               answers: {
-                create: q.options.map((option) => ({
-                  text: option.text,
-                })),
+                create: q.isConditional
+                  ? [{ id: 1, text: "Yes" }, { id: 2, text: "No" }]
+                  : q.options.map((option) => ({
+                    text: option.text,
+                  })),
               },
             })),
           },
@@ -106,6 +118,7 @@ export const action = async ({ request }) => {
     return json({ error: "Failed to save survey." }, { status: 500 });
   }
 };
+
 
 export default function Index() {
   const { surveys } = useLoaderData();
@@ -207,9 +220,9 @@ export default function Index() {
     index + 1,
     survey.title,
     <InlineStack key={survey.id} alignment="center" gap={300}>
-      <Button onClick={() => handleViewSurvey(survey)} icon={ViewIcon}>View</Button>
-      <Button onClick={() => handleEditSurvey(survey)} icon={PlusCircleIcon} variant="primary">Edit</Button>
-      <Button onClick={() => handleDeleteSurvey(survey.id)} icon={DeleteIcon} variant="primary" tone="critical">Delete</Button>
+      <Button onClick={() => handleViewSurvey(survey)} icon={ViewIcon} size="slim">View</Button>
+      <Button onClick={() => handleEditSurvey(survey)} icon={EditIcon} variant="primary" size="slim">Edit</Button>
+      <Button onClick={() => handleDeleteSurvey(survey.id)} icon={DeleteIcon} variant="primary" size="slim" tone="critical">Delete</Button>
     </InlineStack>
   ]);
 
@@ -274,6 +287,20 @@ export default function Index() {
               {questions.map((question, index) => (
                 <Card key={index} sectioned>
                   <BlockStack gap={300}>
+                    <InlineGrid columns={2}>
+                      <Checkbox
+                        label="Is Conditional-Question?"
+                        checked={question.isConditional || false}
+                        onChange={(value) => handleInputChange(index, "isConditional", value)}
+                      />
+                      {!question.isConditional &&
+                        <Checkbox
+                          label="Is Multi-Choice?"
+                          checked={question.isMultiChoice || false}
+                          onChange={(value) => handleInputChange(index, "isMultiChoice", value)}
+                        />
+                      }
+                    </InlineGrid>
                     <InlineStack alignment="center" gap={300}>
                       <Box width="90%">
                         <TextField
@@ -286,34 +313,62 @@ export default function Index() {
                         <Button onClick={() => handleRemoveQuestion(index)} icon={DeleteIcon} variant="primary" tone="critical" />
                       </Box>
                     </InlineStack>
-                    <InlineStack alignment="center" gap={300}>
-                      <Box width="80%">
-                        <Text variant="headingMd" as="h2">Options</Text>
-                      </Box>
-                      <ButtonGroup>
-                        <Button onClick={() => handleAddOption(index)} icon={PlusCircleIcon} variant="primary" tone="success" />
-                      </ButtonGroup>
-                    </InlineStack>
-                    <BlockStack alignment="center" gap={300}>
-                      {question.options.map((option, optIndex) => (
-                        <InlineStack key={optIndex} alignment="center" gap={300}>
-                          <Box width="90%">
-                            <TextField
-                              placeholder={`Option ${optIndex + 1}`}
-                              value={option.text}
-                              onChange={(value) => {
-                                const updatedQuestions = [...questions];
-                                updatedQuestions[index].options[optIndex].text = value;
-                                setQuestions(updatedQuestions);
-                              }}
-                            />
-                          </Box>
-                          <Box width="5%">
-                            <Button onClick={() => handleRemoveOption(index, optIndex)} icon={DeleteIcon} tone="critical" />
-                          </Box>
-                        </InlineStack>
-                      ))}
-                    </BlockStack>
+                    <>
+                      <InlineStack alignment="center" gap={300}>
+                        <Box width="80%">
+                          <Text variant="headingMd" as="h2">Options</Text>
+                        </Box>
+
+                        {!question.isConditional &&
+                          <ButtonGroup>
+                            <Button onClick={() => handleAddOption(index)} icon={PlusCircleIcon} variant="primary" tone="success" />
+                          </ButtonGroup>
+                        }
+                      </InlineStack>
+                      <BlockStack alignment="center" gap={300}>
+
+
+                        {!question.isConditional ?
+                          <>
+                            {question.options.map((option, optIndex) => (
+                              <InlineStack key={optIndex} alignment="center" gap={300}>
+                                <Box width="90%">
+                                  <TextField
+                                    placeholder={`Option ${optIndex + 1}`}
+                                    value={option.text}
+                                    onChange={(value) => {
+                                      const updatedQuestions = [...questions];
+                                      updatedQuestions[index].options[optIndex].text = value;
+                                      setQuestions(updatedQuestions);
+                                    }}
+                                  />
+                                </Box>
+                                <Box width="5%">
+                                  <Button onClick={() => handleRemoveOption(index, optIndex)} icon={DeleteIcon} tone="critical" />
+                                </Box>
+                              </InlineStack>
+                            ))}
+                          </>
+                          :
+                          <>
+                            <Box width="90%">
+                              <TextField
+                                placeholder={`Option 1`}
+                                value="Yes"
+                                disabled
+                              />
+                            </Box>
+                            <Box width="90%">
+                              <TextField
+                                placeholder={`Option 2`}
+                                value="No"
+                                disabled
+                              />
+                            </Box>
+                          </>
+                        }
+                      </BlockStack>
+                    </>
                   </BlockStack>
                 </Card>
               ))}
@@ -338,18 +393,36 @@ export default function Index() {
       {activeSurvey && (
         <Modal open={modalOpen} onClose={handleCloseModal} title={`Survey: ${activeSurvey.title}`}>
           <Modal.Section>
-            <BlockStack>
+            <InlineGrid columns={2} gap={300}>
               {activeSurvey.questions.map((question, questionIndex) => (
-                <BlockStack key={question.id}>
-                  <Text variant="headingMd">Question {questionIndex + 1}: {question.text}</Text>
-                  <List type="bullet">
-                    {question.answers.map((answer, answerIndex) => (
-                      <List.Item key={answer.id}>{answer.text}</List.Item>
-                    ))}
-                  </List>
-                </BlockStack>
+                <Card>
+                  <BlockStack key={question.id} gap={200}>
+                    <Text variant="headingMd">Question {questionIndex + 1}: {question.text}</Text>
+                    <InlineStack>
+                      <Box width="40%">
+                        <Text variant="headingXs" as="h6">is Conditional ?</Text>
+                      </Box>
+                      <Box width="5%">
+                        <Badge>{question.isConditional ? <>Yes</> : <>No</>}</Badge>
+                      </Box>
+                    </InlineStack>
+                    <InlineStack>
+                      <Box width="40%">
+                        <Text variant="headingXs" as="h6">is Multi Choice ?</Text>
+                      </Box>
+                      <Box width="5%">
+                        <Badge>{question.isMultiChoice ? <>Yes</> : <>No</>}</Badge>
+                      </Box>
+                    </InlineStack>
+                    <List type="bullet">
+                      {question.answers.map((answer, answerIndex) => (
+                        <List.Item key={answer.id}>{answer.text}</List.Item>
+                      ))}
+                    </List>
+                  </BlockStack>
+                </Card>
               ))}
-            </BlockStack>
+            </InlineGrid>
           </Modal.Section>
         </Modal>
       )}
