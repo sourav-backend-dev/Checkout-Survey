@@ -40,7 +40,7 @@ function ProductReview() {
   const fetchQuizData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://swap-objects-as-arch.trycloudflare.com/app/questions', {
+      const response = await fetch('https://mon-practices-thereby-departure.trycloudflare.com/app/questions', {
         method: 'GET',  // Set the method to POST
         headers: {
           'Content-Type': 'application/json',
@@ -74,7 +74,7 @@ function ProductReview() {
   async function handleSubmit() {
     setLoading(true);
     try {
-      const response = await fetch('https://swap-objects-as-arch.trycloudflare.com/app/proxy', {
+      const response = await fetch('https://mon-practices-thereby-departure.trycloudflare.com/app/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

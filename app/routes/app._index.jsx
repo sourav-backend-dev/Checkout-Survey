@@ -46,15 +46,9 @@ export const action = async ({ request }) => {
   const questions = JSON.parse(formData.get("questions"));
   const surveyId = parseInt(formData.get("surveyId"));
   console.log("Survey id is :", surveyId);
+  console.log("Questions is :", questions);
 
   try {
-    // Fetch existing Yes/No answers
-    const existingYes = await prisma.answer.findFirst({ where: { text: "Yes" } });
-    const existingNo = await prisma.answer.findFirst({ where: { text: "No" } });
-
-    // If Yes/No exist, use their IDs; otherwise, create them
-    const yesId = existingYes ? existingYes.id : (await prisma.answer.create({ data: { text: "Yes" } })).id;
-    const noId = existingNo ? existingNo.id : (await prisma.answer.create({ data: { text: "No" } })).id;
 
     if (surveyId) {
       // Update survey
@@ -87,7 +81,7 @@ export const action = async ({ request }) => {
                 create: q.isConditional
                   ? [{ text: "Yes" }, { text: "No" }]
                   : q.options.map((option) => ({ text: option.text })),
-              },                     
+              },
             })),
           },
         },
@@ -108,9 +102,9 @@ export const action = async ({ request }) => {
               conditionAnswer: null,
               answers: {
                 create: q.isConditional
-                  ? [{ text: "Yes" }, { text: "No" }]
+                  ? [{ text: "Yes" }, { text: "No" }]  // Always "Yes" and "No" for conditional questions
                   : q.options.map((option) => ({ text: option.text })),
-              },              
+              }
             })),
           },
         },
@@ -346,15 +340,25 @@ export default function Index() {
                             <Box width="90%">
                               <TextField
                                 placeholder={`Option 1`}
-                                value="Yes"
-                                disabled
+                                disabled={true}
+                                value="Yes" // Ensure "Yes" is passed
+                                onChange={(value) => {
+                                  const updatedQuestions = [...questions];
+                                  updatedQuestions[index].options[0].text = value; // Update "Yes"
+                                  setQuestions(updatedQuestions);
+                                }}
                               />
                             </Box>
                             <Box width="90%">
                               <TextField
                                 placeholder={`Option 2`}
-                                value="No"
-                                disabled
+                                disabled={true}
+                                value="No" // Ensure "No" is passed
+                                onChange={(value) => {
+                                  const updatedQuestions = [...questions];
+                                  updatedQuestions[index].options[1].text = value; // Update "No"
+                                  setQuestions(updatedQuestions);
+                                }}
                               />
                             </Box>
                           </>
@@ -389,8 +393,8 @@ export default function Index() {
                 </Card>
               ))}
 
-              <input type="hidden" name="questions" value={JSON.stringify(questions)} />
-              <input type="hidden" name="surveyId" value={activeSurvey ? activeSurvey.id : ""} />
+              <input type="text" name="questions" value={JSON.stringify(questions)} />
+              <input type="text" name="surveyId" value={activeSurvey ? activeSurvey.id : ""} />
               <Button submit icon={SaveIcon} variant="primary">Save</Button>
             </FormLayout>
           </Card>
