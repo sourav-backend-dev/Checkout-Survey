@@ -393,8 +393,8 @@ export default function Index() {
                 </Card>
               ))}
 
-              <input type="text" name="questions" value={JSON.stringify(questions)} />
-              <input type="text" name="surveyId" value={activeSurvey ? activeSurvey.id : ""} />
+              <input type="hidden" name="questions" value={JSON.stringify(questions)} />
+              <input type="hidden" name="surveyId" value={activeSurvey ? activeSurvey.id : ""} />
               <Button submit icon={SaveIcon} variant="primary">Save</Button>
             </FormLayout>
           </Card>
