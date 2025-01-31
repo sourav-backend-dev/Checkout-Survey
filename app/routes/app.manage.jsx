@@ -22,63 +22,19 @@ const prisma = new PrismaClient();
 
 export const loader = async () => {
   const feedbacks = await prisma.apiProxyData.findMany();
-
-  // Iterate through each feedback
-  for (const feedback of feedbacks) {
-    const answers = JSON.parse(feedback.answers); // Parse the serialized answers string
-
-    // Iterate through each answer and fetch the corresponding answer texts by ID
-    for (const answer of answers) {
-      let answerIds = [];
-
-      // Check if the answer is an array (multi-choice) or a single answer
-      if (Array.isArray(answer.answer)) {
-        answerIds = answer.answer.map((id) => parseInt(id, 10)); // Convert each ID to an integer
-      } else if (answer.answer) {
-        answerIds = [parseInt(answer.answer, 10)]; // Convert to an array with a single integer
-      }
-
-      // Fetch the actual answer texts using the answer IDs
-      if (answerIds.length > 0) {
-        const answerTexts = await prisma.answer.findMany({
-          where: {
-            id: {
-              in: answerIds, // Fetch answers by their IDs
-            },
-          },
-        });
-
-        // Replace the answer IDs with the actual answer texts
-        answer.answer = answerTexts.map((answerText) => answerText.text);
-      }
-    }
-
-    // Update the feedback's answers with the actual answer texts
-    feedback.answers = answers;
-  }
-
   return json({ feedbacks });
 };
 
-
 export default function AdditionalPage() {
   const data = useLoaderData();
-  console.log(data);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState("");
-
   const initialFeedbacks = data.feedbacks.map((feedback) => ({
     id: feedback.id.toString(),
     email: feedback.email,
     createdAt: new Date(feedback.createdAt).toLocaleString(),
-    answers: feedback.answers.map((answerObj) => ({
-      questionTitle: answerObj.questionTitle,
-      answer: Array.isArray(answerObj.answer)
-        ? answerObj.answer.join(", ")  // For multi-choice answers, join with commas
-        : answerObj.answer,  // For single-choice answers, just return the answer
-    })),
+    answers: JSON.parse(feedback.answers),
   }));
-
 
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("createdAt");
@@ -215,12 +171,9 @@ export default function AdditionalPage() {
                 </IndexTable.Cell>
                 <IndexTable.Cell>{email}</IndexTable.Cell>
                 <IndexTable.Cell>
-                  {answers.map((answerObj, idx) => (
+                  {answers.map((ans, idx) => (
                     <div key={idx}>
-                      <strong>{answerObj.questionTitle}:</strong>
-                      {Array.isArray(answerObj.answer)
-                        ? answerObj.answer.join(', ') 
-                        : answerObj.answer} 
+                      <strong>{ans.questionTitle}:</strong> {ans.answer}
                     </div>
                   ))}
                 </IndexTable.Cell>

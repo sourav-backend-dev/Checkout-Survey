@@ -12,7 +12,7 @@ import {
   useExtension,
   useSettings,
 } from '@shopify/ui-extensions-react/checkout';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useLayoutEffect, useState } from 'react';
 
 const orderDetailsBlock = reactExtension(
   "purchase.thank-you.block.render",
@@ -37,12 +37,12 @@ function ProductReview() {
   const fetchQuizData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://programs-skiing-washing-solved.trycloudflare.com/app/questions', {
+      const response = await fetch('https://racks-preserve-legacy-tray.trycloudflare.com/app/questions', {
         method: 'GET',  // Set the method to POST
         headers: {
-          'Content-Type': 'application/json', 
+          'Content-Type': 'application/json',
         },
-      });      
+      });
       const data = await response.json();
       console.log("DATA ", data);
       if (response.ok) {
@@ -63,7 +63,7 @@ function ProductReview() {
     }
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     fetchQuizData();
   }, [survey_title]);  // Re-run the fetch if survey_title changes
 
@@ -71,7 +71,7 @@ function ProductReview() {
   async function handleSubmit() {
     setLoading(true);
     try {
-      const response = await fetch('https://programs-skiing-washing-solved.trycloudflare.com/app/proxy', {
+      const response = await fetch('https://racks-preserve-legacy-tray.trycloudflare.com/app/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +104,7 @@ function ProductReview() {
     const selectedOption = currentQuestion.answers.find(option => option.id === parseInt(selectedValue));
     if (selectedOption) {
       setProductReview(selectedValue); // Update the selected value in state
-  
+
       // Use a functional update for answers to avoid stale state
       setAnswers((prevAnswers) => {
         const updatedAnswers = [...prevAnswers];
@@ -112,6 +112,27 @@ function ProductReview() {
           questionTitle: currentQuestion.text,
           questionNumber: currentQuestionIndex + 1,
           answer: selectedOption.text,
+        };
+        console.log('Updated answers:', updatedAnswers); // Log updated answers
+        return updatedAnswers;
+      });
+    }
+  };
+
+  // Handle multi-choice change for questions
+  const handleMultiChoiceChange = (selectedValues) => {
+    console.log('Selected values:', selectedValues); // Log selected choice IDs
+    const selectedOptions = currentQuestion.answers.filter(option => selectedValues.includes(option.id.toString()));
+    if (selectedOptions.length > 0) {
+      setProductReview(selectedValues.join(',')); // Update the selected values in state as a comma-separated string
+
+      // Use a functional update for answers to avoid stale state
+      setAnswers((prevAnswers) => {
+        const updatedAnswers = [...prevAnswers];
+        updatedAnswers[currentQuestionIndex] = {
+          questionTitle: currentQuestion.text,
+          questionNumber: currentQuestionIndex + 1,
+          answer: selectedOptions.map(option => option.text).join(','), // Join answers with commas
         };
         console.log('Updated answers:', updatedAnswers); // Log updated answers
         return updatedAnswers;
@@ -146,10 +167,14 @@ function ProductReview() {
         <>
           <ChoiceList
             name={`quiz-response-${currentQuestionIndex}`}
-            value={productReview}
+            value={currentQuestion.isMultiChoice ? productReview.split(',') : productReview}
             onChange={(selectedValue) => {
-              setProductReview(selectedValue); // Ensure productReview is updated
-              handleChoiceChange(selectedValue); // Update answers array
+              if (currentQuestion.isMultiChoice) {
+                handleMultiChoiceChange(selectedValue);
+              } else {
+                setProductReview(selectedValue); // Ensure productReview is updated
+                handleChoiceChange(selectedValue); // Update answers array
+              }
             }}
           >
             <BlockStack>
@@ -217,7 +242,7 @@ function useStorageState(key) {
   const [data, setData] = useState();
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     async function queryStorage() {
       const value = await storage.read(key);
       setData(value);

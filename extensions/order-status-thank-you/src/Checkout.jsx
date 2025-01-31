@@ -11,8 +11,9 @@ import {
   useApi,
   useExtension,
   useSettings,
+  TextField,
 } from '@shopify/ui-extensions-react/checkout';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 
 const orderDetailsBlock = reactExtension(
   "purchase.thank-you.block.render",
@@ -26,10 +27,12 @@ function ProductReview() {
   const [productReview, setProductReview] = useState('');
   const [answers, setAnswers] = useState([]); // Array to store answers
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [shouldProceed, setShouldProceed] = useState(true); // State to track if we should proceed
   const api = useApi();
   const { survey_title } = useSettings();  // Get the survey title from settings
   console.log("survey title is ", survey_title);  // Log survey title
   const userEmail = api.buyerIdentity.email.current;
+  const [textInput, setTextInput] = useState(''); // State to store text input
 
   const [{ data: productReviewed, loading: productReviewedLoading }] = useStorageState('product-reviewed');
 
@@ -37,12 +40,12 @@ function ProductReview() {
   const fetchQuizData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://price-projection-mali-riding.trycloudflare.com/app/questions', {
+      const response = await fetch('https://swap-objects-as-arch.trycloudflare.com/app/questions', {
         method: 'GET',  // Set the method to POST
         headers: {
-          'Content-Type': 'application/json', 
+          'Content-Type': 'application/json',
         },
-      });      
+      });
       const data = await response.json();
       console.log("DATA ", data);
       if (response.ok) {
@@ -63,7 +66,7 @@ function ProductReview() {
     }
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     fetchQuizData();
   }, [survey_title]);  // Re-run the fetch if survey_title changes
 
@@ -71,7 +74,7 @@ function ProductReview() {
   async function handleSubmit() {
     setLoading(true);
     try {
-      const response = await fetch('https://price-projection-mali-riding.trycloudflare.com/app/proxy', {
+      const response = await fetch('https://swap-objects-as-arch.trycloudflare.com/app/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -100,11 +103,11 @@ function ProductReview() {
 
   // Handle choice change for questions
   const handleChoiceChange = (selectedValue) => {
-    console.log('Selected value is:', selectedValue); // Log selected choice ID
+    console.log('Selected value:', selectedValue); // Log selected choice ID
     const selectedOption = currentQuestion.answers.find(option => option.id === parseInt(selectedValue));
     if (selectedOption) {
       setProductReview(selectedValue); // Update the selected value in state
-  
+
       // Use a functional update for answers to avoid stale state
       setAnswers((prevAnswers) => {
         const updatedAnswers = [...prevAnswers];
@@ -116,51 +119,122 @@ function ProductReview() {
         console.log('Updated answers:', updatedAnswers); // Log updated answers
         return updatedAnswers;
       });
+
+      // Check if the current question is conditional and the user selected "No"
+      if (currentQuestion.isConditional && selectedOption.text.toLowerCase() === 'no') {
+        setShouldProceed(false); // Stop proceeding further
+      }
+    }
+  };
+
+  // Handle multi-choice change for questions
+  const handleMultiChoiceChange = (selectedValues) => {
+    console.log('Selected values:', selectedValues); // Log selected choice IDs
+    const selectedOptions = currentQuestion.answers.filter(option => selectedValues.includes(option.id.toString()));
+    if (selectedOptions.length > 0) {
+      setProductReview(selectedValues.join(',')); // Update the selected values in state as a comma-separated string
+
+      // Use a functional update for answers to avoid stale state
+      setAnswers((prevAnswers) => {
+        const updatedAnswers = [...prevAnswers];
+        updatedAnswers[currentQuestionIndex] = {
+          questionTitle: currentQuestion.text,
+          questionNumber: currentQuestionIndex + 1,
+          answer: selectedOptions.map(option => option.text).join(','), // Join answers with commas
+        };
+        console.log('Updated answers:', updatedAnswers); // Log updated answers
+        return updatedAnswers;
+      });
     }
   };
 
   console.log(answers);
 
-  // Handle Next Question navigation
   const handleNext = () => {
     if (currentQuestionIndex < quizData.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setTextInput(''); // Reset text input for the next question
     }
   };
 
-  // Handle Previous Question navigation
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
+      setTextInput(''); // Reset text input for the previous question
     }
   };
+
+  const handleTextInputChange = (value) => {
+    setTextInput(value); // Update the text input state
+    setAnswers((prevAnswers) => {
+      const updatedAnswers = [...prevAnswers];
+      updatedAnswers[currentQuestionIndex] = {
+        questionTitle: currentQuestion.text,
+        questionNumber: currentQuestionIndex + 1,
+        answer: value, // Store the text input as the answer
+      };
+      console.log('Updated answers:', updatedAnswers); // Log updated answers
+      return updatedAnswers;
+    });
+  };
+
+  // If the user selected "No" on a conditional question, skip to submission
+  if (!shouldProceed) {
+    return (
+      <Survey
+        title="Survey"
+        description="Thank you for your feedback!"
+        onSubmit={handleSubmit}
+        loading={loading}
+      >
+        <Text>You have chosen not to proceed further. Thank you for your time!</Text>
+      </Survey>
+    );
+  }
 
   return (
     <Survey
       title="Survey"
-      description="We would like to learn if you are enjoying your purchase."
       onSubmit={handleSubmit}
       loading={loading}
     >
       {currentQuestion ? (
         <>
-          <ChoiceList
-            name={`quiz-response-${currentQuestionIndex}`}
-            value={productReview}
-            onChange={(selectedValue) => {
-              setProductReview(selectedValue); // Ensure productReview is updated
-              handleChoiceChange(selectedValue); // Update answers array
-            }}
-          >
-            <BlockStack>
-              <Text>{currentQuestion.text}</Text>
-              {currentQuestion.answers.map((option, optIndex) => (
-                <Choice key={optIndex} id={option.id.toString()}>
-                  {option.text}
-                </Choice>
-              ))}
-            </BlockStack>
-          </ChoiceList>
+          {currentQuestion.isTextBox ?
+            <>
+              <BlockStack>
+                <Text>{currentQuestion.text}</Text>
+                <TextField
+                  name={`quiz-response-${currentQuestionIndex}`}
+                  label="Enter Something!"
+                  value={textInput} // Bind the value to the state
+                  onChange={(value) => handleTextInputChange(value)} // Handle changes
+                />
+              </BlockStack>
+            </> :
+            <ChoiceList
+              name={`quiz-response-${currentQuestionIndex}`}
+              value={currentQuestion.isMultiChoice ? productReview.split(',') : productReview}
+              onChange={(selectedValue) => {
+                if (currentQuestion.isMultiChoice) {
+                  handleMultiChoiceChange(selectedValue);
+                } else {
+                  setProductReview(selectedValue); // Ensure productReview is updated
+                  handleChoiceChange(selectedValue); // Update answers array
+                }
+              }}
+            >
+              <BlockStack>
+                <Text>{currentQuestion.text}</Text>
+                {currentQuestion.answers.map((option, optIndex) => (
+                  <Choice key={optIndex} id={option.id.toString()}>
+                    {option.text}
+                  </Choice>
+                ))}
+              </BlockStack>
+            </ChoiceList>
+          }
+
 
           <BlockStack>
             <Button kind="secondary" onPress={handlePrevious} disabled={currentQuestionIndex === 0}>
@@ -217,7 +291,7 @@ function useStorageState(key) {
   const [data, setData] = useState();
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     async function queryStorage() {
       const value = await storage.read(key);
       setData(value);

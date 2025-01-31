@@ -1,13 +1,8 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
 }
 
-// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
-// enough when changing adapters.
-// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
   provider = "sqlite"
   url      = "file:dev.sqlite"
@@ -43,30 +38,31 @@ model Question {
   surveyId       Int
   survey         Survey    @relation(fields: [surveyId], references: [id])
   answers        Answer[]
-  isMultiChoice  Boolean   @default(false) // New field for multi-choice support
-  isConditional  Boolean   @default(false) // If this question controls conditional logic
-  conditionAnswer String?  // The answer required to show the next question
+  isMultiChoice  Boolean   @default(false) 
+  isConditional  Boolean   @default(false)
+  isTextBox      Boolean   @default(false)
+  conditionAnswer String? 
 }
 
 
 model Answer {
   id        Int      @id @default(autoincrement())
-  text      String   // The answer text
+  text      String  
   questionId Int
   question  Question @relation(fields: [questionId], references: [id])
 }
 
 model UserAnswer {
-  id         Int      @id @default(autoincrement()) // Unique ID for each answer entry
-  userEmail  String   // User's email
-  questionId Int      // Reference to the question being answered
-  answerText String   // The user's answer to the question
-  createdAt  DateTime @default(now()) // Timestamp when the answer was created
+  id         Int      @id @default(autoincrement()) 
+  userEmail  String   
+  questionId Int     
+  answerText String   
+  createdAt  DateTime @default(now()) 
 }
 
 model ApiProxyData {
-  id        Int      @id @default(autoincrement()) // Unique ID for each API request
-  email     String   // User's email
-  answers   String   // Store answers as a serialized string (e.g., JSON)
-  createdAt DateTime @default(now()) // Timestamp when the proxy data was submitted
+  id        Int      @id @default(autoincrement())
+  email     String  
+  answers   String  
+  createdAt DateTime @default(now())
 }

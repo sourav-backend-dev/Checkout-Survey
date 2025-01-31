@@ -19,7 +19,7 @@ import {
   Modal,
   List,
   Banner,
-  Badge, // Import Banner component
+  Badge,
 } from "@shopify/polaris";
 import { DeleteIcon, EditIcon, PlusCircleIcon, SaveIcon, ViewIcon } from '@shopify/polaris-icons';
 import { TitleBar } from "@shopify/app-bridge-react";
@@ -48,6 +48,14 @@ export const action = async ({ request }) => {
   console.log("Survey id is :", surveyId);
 
   try {
+    // Fetch existing Yes/No answers
+    const existingYes = await prisma.answer.findFirst({ where: { text: "Yes" } });
+    const existingNo = await prisma.answer.findFirst({ where: { text: "No" } });
+
+    // If Yes/No exist, use their IDs; otherwise, create them
+    const yesId = existingYes ? existingYes.id : (await prisma.answer.create({ data: { text: "Yes" } })).id;
+    const noId = existingNo ? existingNo.id : (await prisma.answer.create({ data: { text: "No" } })).id;
+
     if (surveyId) {
       // Update survey
       await prisma.answer.deleteMany({
@@ -71,16 +79,15 @@ export const action = async ({ request }) => {
           questions: {
             create: questions.map((q) => ({
               text: q.text,
-              isMultiChoice: q.isConditional ? false : q.isMultiChoice || false,
-              isConditional: q.isConditional || false,
-              conditionAnswer: q.isConditional ? q.conditionAnswer : null,
+              isMultiChoice: q.isConditional ? false : q.isTextBox ? false : q.isMultiChoice || false,
+              isConditional: q.isMultiChoice ? false : q.isTextBox ? false : q.isConditional || false,
+              isTextBox: q.isConditional ? false : q.isMultiChoice ? false : q.isTextBox || false,
+              conditionAnswer: null,
               answers: {
                 create: q.isConditional
-                  ? [{ id: 1, text: "Yes" }, { id: 2, text: "No" }]
-                  : q.options.map((option) => ({
-                    text: option.text,
-                  })),
-              },
+                  ? [{ text: "Yes" }, { text: "No" }]
+                  : q.options.map((option) => ({ text: option.text })),
+              },                     
             })),
           },
         },
@@ -95,20 +102,20 @@ export const action = async ({ request }) => {
           questions: {
             create: questions.map((q) => ({
               text: q.text,
-              isMultiChoice: q.isConditional ? false : q.isMultiChoice || false,
-              isConditional: q.isConditional || false,
-              conditionAnswer: q.isConditional ? q.conditionAnswer : null,
+              isMultiChoice: q.isConditional ? false : q.isTextBox ? false : q.isMultiChoice || false,
+              isConditional: q.isMultiChoice ? false : q.isTextBox ? false : q.isConditional || false,
+              isTextBox: q.isConditional ? false : q.isMultiChoice ? false : q.isTextBox || false,
+              conditionAnswer: null,
               answers: {
                 create: q.isConditional
-                  ? [{ id: 1, text: "Yes" }, { id: 2, text: "No" }]
-                  : q.options.map((option) => ({
-                    text: option.text,
-                  })),
-              },
+                  ? [{ text: "Yes" }, { text: "No" }]
+                  : q.options.map((option) => ({ text: option.text })),
+              },              
             })),
           },
         },
       });
+
       console.log("Survey created:", newSurvey);
     }
 
@@ -118,6 +125,7 @@ export const action = async ({ request }) => {
     return json({ error: "Failed to save survey." }, { status: 500 });
   }
 };
+
 
 
 export default function Index() {
@@ -287,19 +295,25 @@ export default function Index() {
               {questions.map((question, index) => (
                 <Card key={index} sectioned>
                   <BlockStack gap={300}>
-                    <InlineGrid columns={2}>
+                    <InlineGrid columns={3}>
                       <Checkbox
-                        label="Is Conditional-Question?"
+                        label="Is Conditional?"
                         checked={question.isConditional || false}
+                        disabled={question.isMultiChoice || question.isTextBox}
                         onChange={(value) => handleInputChange(index, "isConditional", value)}
                       />
-                      {!question.isConditional &&
-                        <Checkbox
-                          label="Is Multi-Choice?"
-                          checked={question.isMultiChoice || false}
-                          onChange={(value) => handleInputChange(index, "isMultiChoice", value)}
-                        />
-                      }
+                      <Checkbox
+                        label="Is Text Box?"
+                        checked={question.isTextBox || false}
+                        disabled={question.isMultiChoice || question.isConditional}
+                        onChange={(value) => handleInputChange(index, "isTextBox", value)}
+                      />
+                      <Checkbox
+                        label="Is Multi-Choice?"
+                        checked={question.isMultiChoice || false}
+                        disabled={question.isConditional || question.isTextBox}
+                        onChange={(value) => handleInputChange(index, "isMultiChoice", value)}
+                      />
                     </InlineGrid>
                     <InlineStack alignment="center" gap={300}>
                       <Box width="90%">
@@ -315,41 +329,19 @@ export default function Index() {
                     </InlineStack>
                     <>
                       <InlineStack alignment="center" gap={300}>
-                        <Box width="80%">
-                          <Text variant="headingMd" as="h2">Options</Text>
-                        </Box>
-
-                        {!question.isConditional &&
+                        {!question.isTextBox &&
+                          <Box width="80%">
+                            <Text variant="headingMd" as="h2">Options</Text>
+                          </Box>
+                        }
+                        {!question.isConditional && !question.isTextBox &&
                           <ButtonGroup>
                             <Button onClick={() => handleAddOption(index)} icon={PlusCircleIcon} variant="primary" tone="success" />
                           </ButtonGroup>
                         }
                       </InlineStack>
                       <BlockStack alignment="center" gap={300}>
-
-
-                        {!question.isConditional ?
-                          <>
-                            {question.options.map((option, optIndex) => (
-                              <InlineStack key={optIndex} alignment="center" gap={300}>
-                                <Box width="90%">
-                                  <TextField
-                                    placeholder={`Option ${optIndex + 1}`}
-                                    value={option.text}
-                                    onChange={(value) => {
-                                      const updatedQuestions = [...questions];
-                                      updatedQuestions[index].options[optIndex].text = value;
-                                      setQuestions(updatedQuestions);
-                                    }}
-                                  />
-                                </Box>
-                                <Box width="5%">
-                                  <Button onClick={() => handleRemoveOption(index, optIndex)} icon={DeleteIcon} tone="critical" />
-                                </Box>
-                              </InlineStack>
-                            ))}
-                          </>
-                          :
+                        {question.isConditional ?
                           <>
                             <Box width="90%">
                               <TextField
@@ -366,7 +358,31 @@ export default function Index() {
                               />
                             </Box>
                           </>
+                          : question.isTextBox ?
+                            <></>
+                            :
+                            <>
+                              {question.options.map((option, optIndex) => (
+                                <InlineStack key={optIndex} alignment="center" gap={300}>
+                                  <Box width="90%">
+                                    <TextField
+                                      placeholder={`Option ${optIndex + 1}`}
+                                      value={option.text}
+                                      onChange={(value) => {
+                                        const updatedQuestions = [...questions];
+                                        updatedQuestions[index].options[optIndex].text = value;
+                                        setQuestions(updatedQuestions);
+                                      }}
+                                    />
+                                  </Box>
+                                  <Box width="5%">
+                                    <Button onClick={() => handleRemoveOption(index, optIndex)} icon={DeleteIcon} tone="critical" />
+                                  </Box>
+                                </InlineStack>
+                              ))}
+                            </>
                         }
+
                       </BlockStack>
                     </>
                   </BlockStack>
@@ -403,7 +419,7 @@ export default function Index() {
                         <Text variant="headingXs" as="h6">is Conditional ?</Text>
                       </Box>
                       <Box width="5%">
-                        <Badge>{question.isConditional ? <>Yes</> : <>No</>}</Badge>
+                        <Badge tone={question.isConditional ? "attention" : "info"}>{question.isConditional ? <>Yes</> : <>No</>}</Badge>
                       </Box>
                     </InlineStack>
                     <InlineStack>
@@ -411,7 +427,15 @@ export default function Index() {
                         <Text variant="headingXs" as="h6">is Multi Choice ?</Text>
                       </Box>
                       <Box width="5%">
-                        <Badge>{question.isMultiChoice ? <>Yes</> : <>No</>}</Badge>
+                        <Badge tone={question.isMultiChoice ? "attention" : "info"}>{question.isMultiChoice ? <>Yes</> : <>No</>}</Badge>
+                      </Box>
+                    </InlineStack>
+                    <InlineStack>
+                      <Box width="40%">
+                        <Text variant="headingXs" as="h6">is Text Box ?</Text>
+                      </Box>
+                      <Box width="5%">
+                        <Badge tone={question.isTextBox ? "attention" : "info"}>{question.isTextBox ? <>Yes</> : <>No</>}</Badge>
                       </Box>
                     </InlineStack>
                     <List type="bullet">
