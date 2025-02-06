@@ -12,7 +12,9 @@ import {
   useExtension,
   useSettings,
   TextField,
+  SkeletonTextBlock,
 } from '@shopify/ui-extensions-react/checkout';
+import { SkeletonText } from '@shopify/ui-extensions/checkout';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 
 const orderDetailsBlock = reactExtension(
@@ -40,7 +42,7 @@ function ProductReview() {
   const fetchQuizData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://survey.hatley.com/app/questions', {
+      const response = await fetch('https://lauren-devel-computing-fg.trycloudflare.com/app/questions', {
         method: 'GET',  // Set the method to POST
         headers: {
           'Content-Type': 'application/json',
@@ -74,7 +76,7 @@ function ProductReview() {
   async function handleSubmit() {
     setLoading(true);
     try {
-      const response = await fetch('https://survey.hatley.com/app/proxy', {
+      const response = await fetch('https://lauren-devel-computing-fg.trycloudflare.com/app/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -188,13 +190,16 @@ function ProductReview() {
         loading={loading}
       >
         <Text>You have chosen not to proceed further. Thank you for your time!</Text>
+        <Button kind="primary" onPress={handleSubmit} loading={loading}>
+          Submit
+        </Button>
       </Survey>
     );
   }
 
   return (
     <Survey
-      title="Survey"
+      title={currentQuestion ? currentQuestion.text : <SkeletonText />}
       onSubmit={handleSubmit}
       loading={loading}
     >
@@ -203,7 +208,6 @@ function ProductReview() {
           {currentQuestion.isTextBox ?
             <>
               <BlockStack>
-                <Text>{currentQuestion.text}</Text>
                 <TextField
                   name={`quiz-response-${currentQuestionIndex}`}
                   label="Enter Something!"
@@ -225,28 +229,51 @@ function ProductReview() {
               }}
             >
               <BlockStack>
-                <Text>{currentQuestion.text}</Text>
                 {currentQuestion.answers.map((option, optIndex) => (
-                  <Choice key={optIndex} id={option.id.toString()}>
-                    {option.text}
+                  <Choice
+                    key={optIndex}
+                    id={option.id.toString()}
+                  >
+                    {option.haveTextBox ? (
+                      <>
+                        {option.text}
+                        {productReview.includes(option.id.toString()) && (
+                          <TextField
+                            name={`quiz-response-${currentQuestionIndex}-${optIndex}`}
+                            label="Enter your response"
+                            value={textInput}
+                            onChange={(value) => handleTextInputChange(value)}
+                          />
+                        )}
+                      </>
+                    ) : option.text}
                   </Choice>
                 ))}
               </BlockStack>
             </ChoiceList>
           }
 
-
           <BlockStack>
             <Button kind="secondary" onPress={handlePrevious} disabled={currentQuestionIndex === 0}>
               Previous
             </Button>
-            <Button kind="primary" onPress={handleNext} disabled={currentQuestionIndex === quizData.questions.length - 1}>
-              Next
-            </Button>
+            {currentQuestionIndex < quizData.questions.length - 1 ? (
+              <Button kind="primary" onPress={handleNext}>
+                Next
+              </Button>
+            ) : (
+              <Button kind="primary" onPress={handleSubmit} loading={loading}>
+                Submit
+              </Button>
+            )}
           </BlockStack>
         </>
       ) : (
-        <Text>Loading quiz...</Text>
+        <>
+          <SkeletonTextBlock />
+          <SkeletonTextBlock />
+          <SkeletonTextBlock />
+        </>
       )}
     </Survey>
   );
@@ -276,11 +303,7 @@ function Survey({ title, description, onSubmit, children, loading }) {
     <View border="base" padding="base" borderRadius="base">
       <BlockStack>
         <Heading>{title}</Heading>
-        <Text>{description}</Text>
         {children}
-        <Button kind="secondary" onPress={handleSubmit} loading={loading}>
-          Submit feedback
-        </Button>
       </BlockStack>
     </View>
   );

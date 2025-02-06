@@ -46,10 +46,11 @@ model Question {
 
 
 model Answer {
-  id        Int      @id @default(autoincrement())
-  text      String  
-  questionId Int
-  question  Question @relation(fields: [questionId], references: [id])
+  id          Int      @id @default(autoincrement())
+  text        String  
+  questionId  Int
+  haveTextBox Boolean  @default(false) 
+  question    Question @relation(fields: [questionId], references: [id])
 }
 
 model UserAnswer {

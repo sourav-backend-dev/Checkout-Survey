@@ -20,8 +20,9 @@ import {
   List,
   Banner,
   Badge,
+  Tooltip,
 } from "@shopify/polaris";
-import { DeleteIcon, EditIcon, PlusCircleIcon, SaveIcon, ViewIcon } from '@shopify/polaris-icons';
+import { DeleteIcon, EditIcon, PlusCircleIcon, SaveIcon, ToggleOffIcon, ToggleOnIcon, ViewIcon } from '@shopify/polaris-icons';
 import { TitleBar } from "@shopify/app-bridge-react";
 
 const prisma = new PrismaClient();
@@ -79,8 +80,11 @@ export const action = async ({ request }) => {
               conditionAnswer: null,
               answers: {
                 create: q.isConditional
-                  ? [{ text: "Yes" }, { text: "No" }]
-                  : q.options.map((option) => ({ text: option.text })),
+                  ? [{ text: "Yes", haveTextBox: false }, { text: "No", haveTextBox: false }]
+                  : q.options.map((option) => ({
+                    text: option.text,
+                    haveTextBox: option.haveTextBox || false, // Store boolean value
+                  })),
               },
             })),
           },
@@ -102,8 +106,11 @@ export const action = async ({ request }) => {
               conditionAnswer: null,
               answers: {
                 create: q.isConditional
-                  ? [{ text: "Yes" }, { text: "No" }]  // Always "Yes" and "No" for conditional questions
-                  : q.options.map((option) => ({ text: option.text })),
+                  ? [{ text: "Yes", haveTextBox: false }, { text: "No", haveTextBox: false }]
+                  : q.options.map((option) => ({
+                    text: option.text,
+                    haveTextBox: option.haveTextBox || false, // Store boolean value
+                  })),
               }
             })),
           },
@@ -133,6 +140,7 @@ export default function Index() {
   const [modalOpen, setModalOpen] = useState(false);
   const [isDeleteBannerVisible, setDeleteBannerVisible] = useState(false);
   const [surveyToDelete, setSurveyToDelete] = useState(null);
+  const [ansText, setAnsText] = useState(false);
 
   const handleInputChange = (index, field, value) => {
     const updatedQuestions = [...questions];
@@ -368,7 +376,7 @@ export default function Index() {
                             <>
                               {question.options.map((option, optIndex) => (
                                 <InlineStack key={optIndex} alignment="center" gap={300}>
-                                  <Box width="90%">
+                                  <Box width="80%">
                                     <TextField
                                       placeholder={`Option ${optIndex + 1}`}
                                       value={option.text}
@@ -382,6 +390,21 @@ export default function Index() {
                                   <Box width="5%">
                                     <Button onClick={() => handleRemoveOption(index, optIndex)} icon={DeleteIcon} tone="critical" />
                                   </Box>
+                                  {question.isConditional || question.isMultiChoice || question.isTextBox ? <></>:
+                                    <Box width="5%">
+                                      <Tooltip active content="Add Text Field?">
+                                        <Button
+                                          onClick={() => {
+                                            const updatedQuestions = [...questions];
+                                            updatedQuestions[index].options[optIndex].haveTextBox = !updatedQuestions[index].options[optIndex].haveTextBox;
+                                            setQuestions(updatedQuestions);
+                                          }}
+                                          icon={questions[index].options[optIndex].haveTextBox ? ToggleOnIcon : ToggleOffIcon}
+                                          variant={questions[index].options[optIndex].haveTextBox ? "primary" : "secondary"}
+                                        />
+                                      </Tooltip>
+                                    </Box>
+                                  }
                                 </InlineStack>
                               ))}
                             </>
@@ -444,7 +467,7 @@ export default function Index() {
                     </InlineStack>
                     <List type="bullet">
                       {question.answers.map((answer, answerIndex) => (
-                        <List.Item key={answer.id}>{answer.text}</List.Item>
+                        <List.Item key={answer.id}>{answer.text} {answer.haveTextBox &&<Tooltip active content="Have Text Box"><Badge tone="attention">Yes</Badge></Tooltip> }</List.Item>
                       ))}
                     </List>
                   </BlockStack>
