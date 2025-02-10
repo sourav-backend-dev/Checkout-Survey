@@ -42,8 +42,8 @@ function ProductReview() {
   const fetchQuizData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://lauren-devel-computing-fg.trycloudflare.com/app/questions', {
-        method: 'GET',  // Set the method to POST
+      const response = await fetch('https://carries-opponents-participation-asin.trycloudflare.com/app/questions', {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -76,7 +76,7 @@ function ProductReview() {
   async function handleSubmit() {
     setLoading(true);
     try {
-      const response = await fetch('https://lauren-devel-computing-fg.trycloudflare.com/app/proxy', {
+      const response = await fetch('https://carries-opponents-participation-asin.trycloudflare.com/app/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -125,6 +125,7 @@ function ProductReview() {
       // Check if the current question is conditional and the user selected "No"
       if (currentQuestion.isConditional && selectedOption.text.toLowerCase() === 'no') {
         setShouldProceed(false); // Stop proceeding further
+        handleSubmit();  // Submit the data immediately when "No" is selected
       }
     }
   };
@@ -180,20 +181,14 @@ function ProductReview() {
     });
   };
 
-  // If the user selected "No" on a conditional question, skip to submission
   if (!shouldProceed) {
     return (
-      <Survey
-        title="Survey"
-        description="Thank you for your feedback!"
-        onSubmit={handleSubmit}
-        loading={loading}
-      >
-        <Text>You have chosen not to proceed further. Thank you for your time!</Text>
-        <Button kind="primary" onPress={handleSubmit} loading={loading}>
-          Submit
-        </Button>
-      </Survey>
+      <View border="base" padding="base" borderRadius="base">
+        <BlockStack>
+          <Heading>Thanks for your feedback!</Heading>
+          <Text>Your response has been submitted</Text>
+        </BlockStack>
+      </View>
     );
   }
 
