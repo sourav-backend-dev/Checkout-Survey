@@ -10,6 +10,7 @@ import {
   BlockStack,
   Modal,
   Button,
+  Badge,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
 import { json, useLoaderData } from "@remix-run/react";
@@ -22,20 +23,33 @@ const prisma = new PrismaClient();
 
 export const loader = async () => {
   const feedbacks = await prisma.apiProxyData.findMany();
-  return json({ feedbacks });
+  const surveyData = await prisma.survey.findMany({
+    include: {
+      questions: true, // Fetch associated questions
+    },
+  });
+
+  return json({ feedbacks, surveyData });
 };
 
 export default function AdditionalPage() {
-  const data = useLoaderData();
+  const { feedbacks, surveyData } = useLoaderData();
+  console.log(surveyData);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState("");
-  const initialFeedbacks = data.feedbacks.map((feedback) => ({
-    id: feedback.id.toString(),
-    email: feedback.email,
-    createdAt: new Date(feedback.createdAt).toLocaleString(),
-    answers: JSON.parse(feedback.answers),
-  }));
+  const initialFeedbacks = feedbacks.map((feedback, index) => {
+    const dateTime = new Date(feedback.createdAt);
+    return {
+      sr: index + 1,
+      id: feedback.id.toString(),
+      email: feedback.email,
+      date: dateTime.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }),
+      time: dateTime.toLocaleTimeString(),
+      answers: JSON.parse(feedback.answers),
+    };
+  });
 
+  const [selectedFeedback, setSelectedFeedback] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("asc");
@@ -57,18 +71,32 @@ export default function AdditionalPage() {
       );
     }
 
+    // result = result.sort((a, b) => {
+    //   if (sortField === "email") {
+    //     return sortOrder === "asc"
+    //       ? a.email.localeCompare(b.email)
+    //       : b.email.localeCompare(a.email);
+    //   } else if (sortField === "date") {
+    //     return sortOrder === "asc"
+    //       ? new Date(a.createdAt) - new Date(b.createdAt)
+    //       : new Date(b.createdAt) - new Date(a.createdAt);
+    //   }
+    //   return 0;
+    // });
+
     result = result.sort((a, b) => {
       if (sortField === "email") {
         return sortOrder === "asc"
           ? a.email.localeCompare(b.email)
           : b.email.localeCompare(a.email);
-      } else if (sortField === "createdAt") {
+      } else if (sortField === "date") {
         return sortOrder === "asc"
-          ? new Date(a.createdAt) - new Date(b.createdAt)
-          : new Date(b.createdAt) - new Date(a.createdAt);
+          ? new Date(a.date) - new Date(b.date)
+          : new Date(b.date) - new Date(a.date);
       }
       return 0;
     });
+
 
     return result;
   }, [searchTerm, sortField, sortOrder, initialFeedbacks]);
@@ -118,7 +146,7 @@ export default function AdditionalPage() {
     setIsModalOpen(false);
     setExportFormat("");
   };
-
+  console.log("selected feedback is:", selectedFeedback);
   return (
     <Page
       title="Manage User Dashboard"
@@ -144,44 +172,106 @@ export default function AdditionalPage() {
             <Box width="25%">
               <Select
                 options={[
-                  { label: "Ascending", value: "email-asc" },
-                  { label: "Descending", value: "email-desc" },
+                  { label: "Email Ascending", value: "email-asc" },
+                  { label: "Email Descending", value: "email-desc" },
+                  { label: "Date Ascending", value: "date-asc" },
+                  { label: "Date Descending", value: "date-desc" }
                 ]}
                 labelInline
                 placeholder="Sort By"
                 onChange={handleSortChange}
                 value={`${sortField}-${sortOrder}`}
               />
+
             </Box>
           </InlineStack>
           <IndexTable
             resourceName={{ singular: "feedback", plural: "feedbacks" }}
             itemCount={filteredFeedbacks.length}
             headings={[
-              { title: "ID" },
+              { title: "Sr No" },
               { title: "Email" },
-              { title: "Answers" },
+              { title: "Date" },
+              { title: "Time (GMT+5:30)" },
+              { title: "Action" },
             ]}
             selectable={false}
           >
-            {filteredFeedbacks.map(({ id, email, createdAt, answers }, index) => (
+            {filteredFeedbacks.map(({ sr, id, email, date, time, answers }, index) => (
               <IndexTable.Row id={id} key={id} position={index}>
                 <IndexTable.Cell>
-                  <Text variation="strong">{id}</Text>
+                  <Text variation="strong">{sr}</Text>
                 </IndexTable.Cell>
                 <IndexTable.Cell>{email}</IndexTable.Cell>
+                <IndexTable.Cell>{date}</IndexTable.Cell>
+                <IndexTable.Cell>{time}</IndexTable.Cell>
                 <IndexTable.Cell>
-                  {answers.map((ans, idx) => (
-                    <div key={idx}>
-                      <strong>{ans.questionTitle}:</strong> {ans.answer}
-                    </div>
-                  ))}
+                  <Button onClick={() => setSelectedFeedback(feedbacks[index])} variant="primary">
+                    Details
+                  </Button>
                 </IndexTable.Cell>
               </IndexTable.Row>
             ))}
           </IndexTable>
         </BlockStack>
       </Card>
+      {selectedFeedback && (
+        <Modal
+          open={!!selectedFeedback}
+          onClose={() => setSelectedFeedback(null)}
+          title="Feedback Details"
+        >
+          <Modal.Section>
+            {selectedFeedback && (
+              <BlockStack gap={400}>
+                {JSON.parse(selectedFeedback.answers).map((ans, idx) => {
+                  // Find the matching question in surveyData
+                  const matchedQuestion = surveyData[0]?.questions.find(q => q.text === ans.questionTitle);
+
+                  return (
+                    <Box padding={300} key={idx} border="base" background="bg-surface-secondary">
+                      <Text as="p" variant="headingSm">Q{idx + 1}: {ans.questionTitle}</Text>
+
+                      {/* If the answer is multiple-choice, show it as a list */}
+                      {matchedQuestion?.isMultiChoice && ans.answer.includes(",") ? (
+                        <>
+                          <Text as="p" color="subdued">
+                            <strong>A: </strong> Multiple Choice Answers:
+                          </Text>
+                          <Box paddingInlineStart={400}>
+                            {ans.answer.split(",").map((item, index) => (
+                              <Text as="p" color="subdued">✅ {item.trim().startsWith("other(") ? (
+                                <>
+                                 {item.trim().startsWith("other(") ? item.trim().replace(/^other\((.*?)\)$/, "$1") : item.trim()} <Badge tone="info">Other</Badge>
+                                </>
+                              ) : (
+                                item.trim()
+                              )}</Text>
+                            ))}
+                          </Box>
+                        </>
+                      ) : (
+                        <Text as="p" color="subdued">
+                          <strong>A: </strong>
+                          {ans.answer.startsWith("other(") ? (
+                            <>
+                             {ans.answer.startsWith("other(") ? ans.answer.replace(/^other\((.*?)\)$/, "$1") : ans.answer} <Badge tone="info">Other</Badge>
+                            </>
+                          ) : (
+                            ans.answer
+                          )}
+                        </Text>
+                      )}
+                    </Box>
+                  );
+                })}
+              </BlockStack>
+            )}
+          </Modal.Section>
+        </Modal>
+      )}
+
+
       {isModalOpen && (
         <Modal
           open={isModalOpen}

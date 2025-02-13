@@ -121,17 +121,6 @@ export const action = async ({ request }) => {
       }
       console.log(data.email);
 
-      // Convert the answer array to a comma-separated string if it's an array
-      const answerText = Array.isArray(answer.answer) ? answer.answer.join(",") : answer.answer;
-
-      // Now create the answer in the UserAnswer table
-      return prisma.userAnswer.create({
-        data: {
-          userEmail: data.email,
-          questionId: question.id,
-          answerText: answerText, // Store as a comma-separated string
-        },
-      });
     });
 
     // Wait for all answers to be stored
@@ -141,6 +130,7 @@ export const action = async ({ request }) => {
     await prisma.apiProxyData.create({
       data: {
         email: data.email,
+        surveyTitle: data.surveyTitle,
         answers: JSON.stringify(data.answers),
       },
     });

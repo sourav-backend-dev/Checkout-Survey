@@ -190,7 +190,13 @@ export default function Index() {
     setQuestions(
       survey.questions.map(q => ({
         text: q.text,
-        options: q.answers.map(answer => ({ text: answer.text }))
+        isConditional: q.isConditional || false,
+        isMultiChoice: q.isMultiChoice || false,
+        isTextBox: q.isTextBox || false,
+        options: q.answers.map(answer => ({
+          text: answer.text,
+          haveTextBox: answer.haveTextBox || false,
+        }))
       }))
     );
   };
@@ -235,6 +241,8 @@ export default function Index() {
       <Button onClick={() => handleDeleteSurvey(survey.id)} icon={DeleteIcon} variant="primary" size="slim" tone="critical">Delete</Button>
     </InlineStack>
   ]);
+
+  console.log("questions: ", questions)
 
   return (
     <Page>
@@ -390,9 +398,9 @@ export default function Index() {
                                   <Box width="5%">
                                     <Button onClick={() => handleRemoveOption(index, optIndex)} icon={DeleteIcon} tone="critical" />
                                   </Box>
-                                  {question.isConditional || question.isMultiChoice || question.isTextBox ? <></>:
+                                  {question.isConditional || question.isTextBox ? <></> :
                                     <Box width="5%">
-                                      <Tooltip active content="Add Text Field?">
+                                      <Tooltip active={optIndex==0 && index == 0} content="Add Text Field?">
                                         <Button
                                           onClick={() => {
                                             const updatedQuestions = [...questions];
@@ -465,11 +473,13 @@ export default function Index() {
                         <Badge tone={question.isTextBox ? "attention" : "info"}>{question.isTextBox ? <>Yes</> : <>No</>}</Badge>
                       </Box>
                     </InlineStack>
-                    <List type="bullet">
-                      {question.answers.map((answer, answerIndex) => (
-                        <List.Item key={answer.id}>{answer.text} {answer.haveTextBox &&<Tooltip active content="Have Text Box"><Badge tone="attention">Yes</Badge></Tooltip> }</List.Item>
-                      ))}
-                    </List>
+                    {!question.isTextBox &&
+                      <List type="bullet">
+                        {question.answers.map((answer, answerIndex) => (
+                          <List.Item key={answer.id}>{answer.text} {answer.haveTextBox && <Tooltip active content="Have Text Box"><Badge tone="attention">Yes</Badge></Tooltip>}</List.Item>
+                        ))}
+                      </List>
+                    }
                   </BlockStack>
                 </Card>
               ))}

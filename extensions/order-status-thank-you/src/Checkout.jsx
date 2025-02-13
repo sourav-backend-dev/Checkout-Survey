@@ -42,7 +42,7 @@ function ProductReview() {
   const fetchQuizData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://carries-opponents-participation-asin.trycloudflare.com/app/questions', {
+      const response = await fetch('https://valued-medications-technologies-respiratory.trycloudflare.com/app/questions', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -72,16 +72,16 @@ function ProductReview() {
     fetchQuizData();
   }, [survey_title]);  // Re-run the fetch if survey_title changes
 
-  // Handle quiz submission
+
   async function handleSubmit() {
     setLoading(true);
     try {
-      const response = await fetch('https://carries-opponents-participation-asin.trycloudflare.com/app/proxy', {
+      const response = await fetch('https://valued-medications-technologies-respiratory.trycloudflare.com/app/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: userEmail, answers }), // Send email along with answers
+        body: JSON.stringify({ email: userEmail,surveyTitle:survey_title, answers }), // Send email along with answers
       });
 
       if (!response.ok) {
@@ -90,6 +90,7 @@ function ProductReview() {
 
       const result = await response.json();
       console.log('Server response:', result);
+      setShouldProceed(false);  // Set shouldProceed to false after submitting the form
     } catch (error) {
       console.error("Error submitting review:", error);
     } finally {
@@ -97,20 +98,20 @@ function ProductReview() {
     }
   }
 
+
   if (productReviewed || productReviewedLoading) {
     return null; // Don't show survey if product is already reviewed
   }
 
   const currentQuestion = quizData ? quizData.questions[currentQuestionIndex] : null;
 
-  // Handle choice change for questions
+
   const handleChoiceChange = (selectedValue) => {
     console.log('Selected value:', selectedValue); // Log selected choice ID
     const selectedOption = currentQuestion.answers.find(option => option.id === parseInt(selectedValue));
     if (selectedOption) {
       setProductReview(selectedValue); // Update the selected value in state
 
-      // Use a functional update for answers to avoid stale state
       setAnswers((prevAnswers) => {
         const updatedAnswers = [...prevAnswers];
         updatedAnswers[currentQuestionIndex] = {
@@ -122,7 +123,6 @@ function ProductReview() {
         return updatedAnswers;
       });
 
-      // Check if the current question is conditional and the user selected "No"
       if (currentQuestion.isConditional && selectedOption.text.toLowerCase() === 'no') {
         setShouldProceed(false); // Stop proceeding further
         handleSubmit();  // Submit the data immediately when "No" is selected
@@ -130,28 +130,62 @@ function ProductReview() {
     }
   };
 
+
   // Handle multi-choice change for questions
+  // const handleMultiChoiceChange = (selectedValues) => {
+  //   console.log('Selected values:', selectedValues); // Log selected choice IDs
+  //   const selectedOptions = currentQuestion.answers.filter(option => selectedValues.includes(option.id.toString()));
+  //   if (selectedOptions.length > 0) {
+  //     setProductReview(selectedValues.join(',')); // Update the selected values in state as a comma-separated string
+
+  //     // Use a functional update for answers to avoid stale state
+  //     setAnswers((prevAnswers) => {
+  //       const updatedAnswers = [...prevAnswers];
+  //       updatedAnswers[currentQuestionIndex] = {
+  //         questionTitle: currentQuestion.text,
+  //         questionNumber: currentQuestionIndex + 1,
+  //         answer: selectedOptions.map(option => option.text).join(','), // Join answers with commas
+  //       };
+  //       console.log('Updated answers:', updatedAnswers); // Log updated answers
+  //       return updatedAnswers;
+  //     });
+  //   }
+  // };
+
   const handleMultiChoiceChange = (selectedValues) => {
     console.log('Selected values:', selectedValues); // Log selected choice IDs
-    const selectedOptions = currentQuestion.answers.filter(option => selectedValues.includes(option.id.toString()));
-    if (selectedOptions.length > 0) {
-      setProductReview(selectedValues.join(',')); // Update the selected values in state as a comma-separated string
+    const selectedOptions = currentQuestion.answers.filter(option =>
+      selectedValues.includes(option.id.toString())
+    );
 
-      // Use a functional update for answers to avoid stale state
-      setAnswers((prevAnswers) => {
-        const updatedAnswers = [...prevAnswers];
-        updatedAnswers[currentQuestionIndex] = {
-          questionTitle: currentQuestion.text,
-          questionNumber: currentQuestionIndex + 1,
-          answer: selectedOptions.map(option => option.text).join(','), // Join answers with commas
-        };
-        console.log('Updated answers:', updatedAnswers); // Log updated answers
-        return updatedAnswers;
-      });
+    let formattedAnswers = selectedOptions
+      .filter(option => !option.haveTextBox) // Remove default "Other" text from selection
+      .map(option => option.text);
+
+    // Check if "Other" is selected and append the text field input correctly
+    const otherOption = selectedOptions.find(option => option.haveTextBox);
+    if (otherOption && textInput.trim() !== '') {
+      formattedAnswers.push(`other(${textInput})`);
     }
+
+    setProductReview(selectedValues.join(',')); // Update the selected values in state as a comma-separated string
+
+    setAnswers((prevAnswers) => {
+      const updatedAnswers = [...prevAnswers];
+      updatedAnswers[currentQuestionIndex] = {
+        questionTitle: currentQuestion.text,
+        questionNumber: currentQuestionIndex + 1,
+        answer: formattedAnswers.join(','), // Join answers with commas
+      };
+      console.log('Updated answers:', updatedAnswers); // Log updated answers
+      return updatedAnswers;
+    });
   };
 
+
+
   console.log(answers);
+  console.log("=============================");
 
   const handleNext = () => {
     if (currentQuestionIndex < quizData.questions.length - 1) {
@@ -167,19 +201,54 @@ function ProductReview() {
     }
   };
 
+  // const handleTextInputChange = (value) => {
+  //   setTextInput(value); // Update the text input state
+  //   setAnswers((prevAnswers) => {
+  //     const updatedAnswers = [...prevAnswers];
+  //     updatedAnswers[currentQuestionIndex] = {
+  //       questionTitle: currentQuestion.text,
+  //       questionNumber: currentQuestionIndex + 1,
+  //       answer: value, // Store the text input as the answer
+  //     };
+  //     console.log('Updated answers:', updatedAnswers); // Log updated answers
+  //     return updatedAnswers;
+  //   });
+  // };
+
   const handleTextInputChange = (value) => {
     setTextInput(value); // Update the text input state
+
     setAnswers((prevAnswers) => {
       const updatedAnswers = [...prevAnswers];
-      updatedAnswers[currentQuestionIndex] = {
-        questionTitle: currentQuestion.text,
-        questionNumber: currentQuestionIndex + 1,
-        answer: value, // Store the text input as the answer
-      };
-      console.log('Updated answers:', updatedAnswers); // Log updated answers
+
+      if (currentQuestion.answers.some(option => option.haveTextBox && productReview.includes(option.id.toString()))) {
+        // If the "Other" option is selected in multi-choice, format it correctly
+        const selectedOptions = currentQuestion.answers.filter(option =>
+          productReview.split(',').includes(option.id.toString())
+        );
+        let formattedAnswer = selectedOptions
+          .map(option => (option.haveTextBox ? `other(${value})` : option.text))
+          .join(',');
+
+        updatedAnswers[currentQuestionIndex] = {
+          questionTitle: currentQuestion.text,
+          questionNumber: currentQuestionIndex + 1,
+          answer: formattedAnswer,
+        };
+      } else {
+        // If it's a standalone text field question
+        updatedAnswers[currentQuestionIndex] = {
+          questionTitle: currentQuestion.text,
+          questionNumber: currentQuestionIndex + 1,
+          answer: `other(${value})`,
+        };
+      }
+
+      console.log('Updated answers:', updatedAnswers);
       return updatedAnswers;
     });
   };
+
 
   if (!shouldProceed) {
     return (
@@ -249,16 +318,16 @@ function ProductReview() {
           }
 
           <BlockStack>
-            <Button kind="secondary" onPress={handlePrevious} disabled={currentQuestionIndex === 0}>
+            {/* <Button kind="secondary" onPress={handlePrevious} disabled={currentQuestionIndex === 0}>
               Previous
-            </Button>
+            </Button> */}
             {currentQuestionIndex < quizData.questions.length - 1 ? (
               <Button kind="primary" onPress={handleNext}>
-                Next
+                SUBMIT
               </Button>
             ) : (
               <Button kind="primary" onPress={handleSubmit} loading={loading}>
-                Submit
+                SUBMIT
               </Button>
             )}
           </BlockStack>
