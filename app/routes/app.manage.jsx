@@ -11,9 +11,11 @@ import {
   Modal,
   Button,
   Badge,
+  ButtonGroup,
+  DatePicker,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
-import { json, useLoaderData } from "@remix-run/react";
+import { Form, json, useLoaderData } from "@remix-run/react";
 import { useState, useMemo } from "react";
 import { PrismaClient } from "@prisma/client";
 import { ExportIcon } from "@shopify/polaris-icons";
@@ -25,12 +27,25 @@ export const loader = async () => {
   const feedbacks = await prisma.apiProxyData.findMany();
   const surveyData = await prisma.survey.findMany({
     include: {
-      questions: true, // Fetch associated questions
+      questions: true,
     },
   });
 
   return json({ feedbacks, surveyData });
 };
+
+export const action = async ({ request }) => {
+  const formData = await request.formData();
+  const id = formData.get("id");
+  console.log("id in action is :", id);
+
+  await prisma.apiProxyData.delete({
+    where: { id: parseInt(id, 10) },
+  });
+
+  return json({ success: true });
+};
+
 
 export default function AdditionalPage() {
   const { feedbacks, surveyData } = useLoaderData();
@@ -47,6 +62,10 @@ export default function AdditionalPage() {
       time: dateTime.toLocaleTimeString(),
       answers: JSON.parse(feedback.answers),
     };
+  });
+  const [selectedDates, setSelectedDates] = useState({
+    start: new Date(),
+    end: new Date(),
   });
 
   const [selectedFeedback, setSelectedFeedback] = useState(null);
@@ -71,19 +90,6 @@ export default function AdditionalPage() {
       );
     }
 
-    // result = result.sort((a, b) => {
-    //   if (sortField === "email") {
-    //     return sortOrder === "asc"
-    //       ? a.email.localeCompare(b.email)
-    //       : b.email.localeCompare(a.email);
-    //   } else if (sortField === "date") {
-    //     return sortOrder === "asc"
-    //       ? new Date(a.createdAt) - new Date(b.createdAt)
-    //       : new Date(b.createdAt) - new Date(a.createdAt);
-    //   }
-    //   return 0;
-    // });
-
     result = result.sort((a, b) => {
       if (sortField === "email") {
         return sortOrder === "asc"
@@ -102,30 +108,27 @@ export default function AdditionalPage() {
   }, [searchTerm, sortField, sortOrder, initialFeedbacks]);
 
   const handleExport = () => {
+    // Filter feedbacks based on the selected date range
+    const dataToExport = filteredFeedbacks.filter((feedback) => {
+      const feedbackDate = new Date(feedback.date); // Convert to Date object
+      return feedbackDate >= selectedDates.start && feedbackDate <= selectedDates.end;
+    }).map((feedback) => {
+      const feedbackDate = new Date(feedback.date); // Convert to Date object
+      return {
+        ID: feedback.id,
+        Email: feedback.email,
+        CreatedAt: feedbackDate.toLocaleDateString("en-GB"),
+        Answers: feedback.answers.map((ans) => `${ans.questionTitle}: ${ans.answer}`).join("; "),
+      };
+    });
+
     if (exportFormat === "excel") {
-      const worksheet = XLSX.utils.json_to_sheet(
-        filteredFeedbacks.map((feedback) => ({
-          ID: feedback.id,
-          Email: feedback.email,
-          CreatedAt: feedback.createdAt,
-          Answers: feedback.answers
-            .map((ans) => `${ans.questionTitle}: ${ans.answer}`)
-            .join("; "),
-        }))
-      );
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Feedbacks");
       XLSX.writeFile(workbook, "feedbacks.xlsx");
     } else if (exportFormat === "csv") {
-      const csvContent = filteredFeedbacks.map((feedback) => ({
-        ID: feedback.id,
-        Email: feedback.email,
-        CreatedAt: feedback.createdAt,
-        Answers: feedback.answers
-          .map((ans) => `${ans.questionTitle}: ${ans.answer}`)
-          .join("; "),
-      }));
-      const worksheet = XLSX.utils.json_to_sheet(csvContent);
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
       const csvData = XLSX.utils.sheet_to_csv(worksheet);
       const blob = new Blob([csvData], { type: "text/csv" });
       const url = window.URL.createObjectURL(blob);
@@ -134,7 +137,7 @@ export default function AdditionalPage() {
       a.download = "feedbacks.csv";
       a.click();
     } else if (exportFormat === "json") {
-      const jsonData = JSON.stringify(filteredFeedbacks, null, 2);
+      const jsonData = JSON.stringify(dataToExport, null, 2);
       const blob = new Blob([jsonData], { type: "application/json" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -146,6 +149,9 @@ export default function AdditionalPage() {
     setIsModalOpen(false);
     setExportFormat("");
   };
+
+
+
   console.log("selected feedback is:", selectedFeedback);
   return (
     <Page
@@ -193,7 +199,7 @@ export default function AdditionalPage() {
               { title: "Email" },
               { title: "Date" },
               { title: "Time (GMT+5:30)" },
-              { title: "Action" },
+              { title: "Action", alignment: "center" },
             ]}
             selectable={false}
           >
@@ -206,10 +212,18 @@ export default function AdditionalPage() {
                 <IndexTable.Cell>{date}</IndexTable.Cell>
                 <IndexTable.Cell>{time}</IndexTable.Cell>
                 <IndexTable.Cell>
-                  <Button onClick={() => setSelectedFeedback(feedbacks[index])} variant="primary">
-                    Details
-                  </Button>
-                </IndexTable.Cell>
+                  <InlineStack align="center" gap={300}>
+                    <Button onClick={() => setSelectedFeedback(feedbacks[index])} variant="primary">
+                      Details
+                    </Button>
+                    <Form method="post">
+                      <input type="hidden" name="id" value={id} />
+                      <Button submit type="submit" tone="critical" variant="primary">
+                        Delete
+                      </Button>
+                    </Form>
+                  </InlineStack>
+                </IndexTable.Cell>  
               </IndexTable.Row>
             ))}
           </IndexTable>
@@ -242,7 +256,7 @@ export default function AdditionalPage() {
                             {ans.answer.split(",").map((item, index) => (
                               <Text as="p" color="subdued">✅ {item.trim().startsWith("other(") ? (
                                 <>
-                                 {item.trim().startsWith("other(") ? item.trim().replace(/^other\((.*?)\)$/, "$1") : item.trim()} <Badge tone="info">Other</Badge>
+                                  {item.trim().startsWith("other(") ? item.trim().replace(/^other\((.*?)\)$/, "$1") : item.trim()} <Badge tone="info">Other</Badge>
                                 </>
                               ) : (
                                 item.trim()
@@ -255,7 +269,7 @@ export default function AdditionalPage() {
                           <strong>A: </strong>
                           {ans.answer.startsWith("other(") ? (
                             <>
-                             {ans.answer.startsWith("other(") ? ans.answer.replace(/^other\((.*?)\)$/, "$1") : ans.answer} <Badge tone="info">Other</Badge>
+                              {ans.answer.startsWith("other(") ? ans.answer.replace(/^other\((.*?)\)$/, "$1") : ans.answer} <Badge tone="info">Other</Badge>
                             </>
                           ) : (
                             ans.answer
@@ -290,9 +304,19 @@ export default function AdditionalPage() {
           ]}
         >
           <Modal.Section>
+            <Card>
+              <BlockStack gap={400}>
+                <InlineStack alignment="center" gap={400}>
+                  <DatePicker month={selectedDates.start.getMonth()} year={selectedDates.start.getFullYear()} onChange={setSelectedDates} selected={selectedDates} allowRange />
+                </InlineStack>
+              </BlockStack>
+            </Card>
+          </Modal.Section>
+          <Modal.Section>
             <Select
               label="Select Export Format"
               options={[
+                { label: "Select an Option", value: "", disabled:true },
                 { label: "Excel", value: "excel" },
                 { label: "CSV", value: "csv" },
                 { label: "JSON", value: "json" },
