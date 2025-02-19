@@ -9,7 +9,6 @@ import {
   Button,
   useStorage,
   useApi,
-  useExtension,
   useSettings,
   TextField,
   SkeletonTextBlock,
@@ -25,15 +24,28 @@ const orderDetailsBlock = reactExtension(
 export { orderDetailsBlock };
 
 function ProductReview() {
+  const api = useApi();
+
+  useEffect(() => {
+    if (api.localization.language.current.isoCode.slice(0, 2) !== 'en') {
+      console.log("Country code is:", api.localization.language.current.isoCode.slice(0, 2));
+    } else {
+      console.log("Country code is undefined");
+    }
+  }, [api]);
+
+  if (api?.localization?.language?.current?.isoCode.slice(0, 2) !== 'en') {
+    return null;
+  }
+
   const [quizData, setQuizData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [productReview, setProductReview] = useState('');
   const [answers, setAnswers] = useState([]); // Array to store answers
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [shouldProceed, setShouldProceed] = useState(true); // State to track if we should proceed
-  const api = useApi();
   const { survey_title } = useSettings();  // Get the survey title from settings
-  console.log("survey title is ", survey_title);  // Log survey title
+  // console.log("survey title is ", survey_title);  // Log survey title
   const userEmail = api.buyerIdentity.email.current;
   const [textInput, setTextInput] = useState(''); // State to store text input
   const [submitted, setSubmitted] = useState(false);
@@ -43,7 +55,7 @@ function ProductReview() {
   const fetchQuizData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://accessibility-node-carrying-vt.trycloudflare.com/app/questions', {
+      const response = await fetch('https://diet-speaks-licence-realm.trycloudflare.com/app/questions', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -77,7 +89,7 @@ function ProductReview() {
   async function handleSubmit() {
     setLoading(true);
     try {
-      const response = await fetch('https://accessibility-node-carrying-vt.trycloudflare.com/app/proxy', {
+      const response = await fetch('https://diet-speaks-licence-realm.trycloudflare.com/app/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
