@@ -25,18 +25,20 @@ export { orderDetailsBlock };
 
 function ProductReview() {
   const api = useApi();
-
-  useEffect(() => {
-    if (api.localization.language.current.isoCode.slice(0, 2) !== 'en') {
-      console.log("Country code is:", api.localization.language.current.isoCode.slice(0, 2));
-    } else {
-      console.log("Country code is undefined");
-    }
-  }, [api]);
-
-  if (api?.localization?.language?.current?.isoCode.slice(0, 2) !== 'en') {
-    return null;
-  }
+  // const [isFrench, setIsFrench] = useState(false);
+  // useEffect(() => {
+  //   if (api?.localization?.language?.current?.isoCode.slice(0, 2) === 'fr') {
+  //     setIsFrench(true);
+  //   }
+  // }, [api]);
+  
+  // // Fetch quiz data after isFrench is updated
+  // useEffect(() => {
+  //   if (isFrench !== null) {
+  //     fetchQuizData();
+  //   }
+  // }, [isFrench]);
+  // console.log("api======",isFrench);
 
   const [quizData, setQuizData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -45,31 +47,53 @@ function ProductReview() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [shouldProceed, setShouldProceed] = useState(true); // State to track if we should proceed
   const { survey_title } = useSettings();  // Get the survey title from settings
-  // console.log("survey title is ", survey_title);  // Log survey title
+  // // console.log("survey title is ", survey_title);  // Log survey title
   const userEmail = api.buyerIdentity.email.current;
   const [textInput, setTextInput] = useState(''); // State to store text input
   const [submitted, setSubmitted] = useState(false);
+  const shopDomain = api.shop.storefrontUrl;
   const [{ data: productReviewed, loading: productReviewedLoading }] = useStorageState('product-reviewed');
 
-  // Fetch quiz data
   const fetchQuizData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://diet-speaks-licence-realm.trycloudflare.com/app/questions', {
+      const response = await fetch('https://electricity-italia-nickel-parents.trycloudflare.com/app/questions', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        },
+        }
       });
+  
       const data = await response.json();
-      console.log("DATA ", data);
       if (response.ok) {
-        // Filter the quiz data based on survey title from settings
-        const quiz = data.surveys.find(survey => survey.title === survey_title);
-        if (quiz) {
-          setQuizData(quiz);  // Set the quiz data only for the matching title
+        let quiz;
+        let isFrench=false;
+        console.log("cuntry code is :",api?.localization?.language?.current?.isoCode);
+        if (api?.localization?.language?.current?.isoCode.slice(0, 2) === 'fr') {
+          isFrench = true;
+        }
+  
+        if (isFrench) {
+          // Find the French survey
+          const frenchSurvey = data.surveys.find(survey => survey.isFrenchVersion === true);
+          
+          if (frenchSurvey) {
+            if (frenchSurvey.surveyId) {
+              // Find the survey that matches the French survey's `surveyId`
+              quiz = data.surveys.find(survey => survey.id === frenchSurvey.surveyId);
+            } else {
+              quiz = frenchSurvey; // Use the French survey if no `surveyId` exists
+            }
+          }
         } else {
-          console.error(`No quiz found for the survey title: ${survey_title}`);
+          // Find the survey that matches `survey_title`
+          quiz = data.surveys.find(survey => survey.title === survey_title);
+        }
+  
+        if (quiz) {
+          setQuizData(quiz); // Set the quiz data
+        } else {
+          console.error(`No quiz found for the given title or language preference.`);
         }
       } else {
         console.error("Error fetching quiz data:", data.error);
@@ -80,21 +104,23 @@ function ProductReview() {
       setLoading(false);
     }
   };
+  
 
   useLayoutEffect(() => {
     fetchQuizData();
   }, [survey_title]);
 
 
-  async function handleSubmit() {
+  async function handleSubmit(updateAnswers = answers) {
+    // console.log("=======", updateAnswers);
     setLoading(true);
     try {
-      const response = await fetch('https://diet-speaks-licence-realm.trycloudflare.com/app/proxy', {
+      const response = await fetch('https://electricity-italia-nickel-parents.trycloudflare.com/app/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: userEmail, surveyTitle: survey_title, answers }), // Send email along with answers
+        body: JSON.stringify({ shopDomain: shopDomain.replace(/^https?:\/\//, ""), email: userEmail, surveyTitle: survey_title, answers: updateAnswers }), // Send email along with answers
       });
 
       if (!response.ok) {
@@ -102,7 +128,7 @@ function ProductReview() {
       }
 
       const result = await response.json();
-      console.log('Server response:', result);
+      // console.log('Server response:', result);
       setShouldProceed(false);
       setSubmitted(true);
     } catch (error) {
@@ -121,7 +147,7 @@ function ProductReview() {
 
 
   const handleChoiceChange = (selectedValue) => {
-    console.log('Selected value:', selectedValue); // Log selected choice ID
+    // console.log('Selected value:', selectedValue); // Log selected choice ID
     const selectedOption = currentQuestion.answers.find(option => option.id === parseInt(selectedValue));
     if (selectedOption) {
       setProductReview(selectedValue); // Update the selected value in state
@@ -133,14 +159,15 @@ function ProductReview() {
           questionNumber: currentQuestionIndex + 1,
           answer: selectedOption.text,
         };
-        console.log('Updated answers:', updatedAnswers); // Log updated answers
+        // console.log('Updated answers:', updatedAnswers);
+
+        if (currentQuestion.isConditional && selectedOption.text.toLowerCase() === 'no') {
+          setShouldProceed(false);
+          handleSubmit(updatedAnswers);
+        }
         return updatedAnswers;
       });
 
-      if (currentQuestion.isConditional && selectedOption.text.toLowerCase() === 'no') {
-        setShouldProceed(false); // Stop proceeding further
-        handleSubmit();  // Submit the data immediately when "No" is selected
-      }
       if (!selectedOption.haveTextBox) {
         handleNext();
       }
@@ -148,7 +175,7 @@ function ProductReview() {
   };
 
   const handleMultiChoiceChange = (selectedValues) => {
-    console.log('Selected values:', selectedValues); // Log selected choice IDs
+    // console.log('Selected values:', selectedValues); // Log selected choice IDs
     const selectedOptions = currentQuestion.answers.filter(option =>
       selectedValues.includes(option.id.toString())
     );
@@ -172,7 +199,7 @@ function ProductReview() {
         questionNumber: currentQuestionIndex + 1,
         answer: formattedAnswers.join(','), // Join answers with commas
       };
-      console.log('Updated answers:', updatedAnswers); // Log updated answers
+      // console.log('Updated answers:', updatedAnswers); // Log updated answers
       return updatedAnswers;
     });
   };
@@ -213,7 +240,7 @@ function ProductReview() {
         };
       }
 
-      console.log('Updated answers:', updatedAnswers);
+      // console.log('Updated answers:', updatedAnswers);
       return updatedAnswers;
     });
   };

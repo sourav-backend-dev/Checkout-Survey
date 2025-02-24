@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 // export const action = async ({ request }) => {
 //   console.log("Action called!");
-  
+
 //   // Handle CORS preflight request
 //   if (request.method === "OPTIONS") {
 //     return new Response(null, {
@@ -129,6 +129,7 @@ export const action = async ({ request }) => {
     // Store the answers as a JSON string in ApiProxyData table
     await prisma.apiProxyData.create({
       data: {
+        shopDomain: data.shopDomain,
         email: data.email,
         surveyTitle: data.surveyTitle,
         answers: JSON.stringify(data.answers),
@@ -171,7 +172,7 @@ export const action = async ({ request }) => {
 
 export const loader = async ({ request }) => {
   console.log("Action called!");
-  
+
   // Handle CORS preflight request
   if (request.method === "OPTIONS") {
     return new Response(null, {

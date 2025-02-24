@@ -21,13 +21,16 @@ import {
   Banner,
   Badge,
   Tooltip,
+  Select,
 } from "@shopify/polaris";
 import { DeleteIcon, EditIcon, PlusCircleIcon, SaveIcon, ToggleOffIcon, ToggleOnIcon, ViewIcon } from '@shopify/polaris-icons';
 import { TitleBar } from "@shopify/app-bridge-react";
+import { authenticate } from "../shopify.server";
 
 const prisma = new PrismaClient();
 
-export const loader = async () => {
+export const loader = async ({ request }) => {
+  await authenticate.admin(request);
   const surveys = await prisma.survey.findMany({
     include: {
       questions: {
@@ -46,8 +49,11 @@ export const action = async ({ request }) => {
   const surveyTitle = formData.get("quizTitle");
   const questions = JSON.parse(formData.get("questions"));
   const surveyId = parseInt(formData.get("surveyId"));
+  const isFrenchVersion = formData.get("isFrenchVersion") === "true";
+  const frenchSurveyId = formData.get("frenchSurveyId") ? parseInt(formData.get("frenchSurveyId")) : null;
+
   console.log("Survey id is :", surveyId);
-  console.log("Questions is :", questions);
+  console.log("frenchSurveyId is :", frenchSurveyId);
 
   try {
 
@@ -71,6 +77,8 @@ export const action = async ({ request }) => {
         where: { id: surveyId },
         data: {
           title: surveyTitle,
+          isFrenchVersion,
+          surveyId: frenchSurveyId,
           questions: {
             create: questions.map((q) => ({
               text: q.text,
@@ -97,6 +105,8 @@ export const action = async ({ request }) => {
       const newSurvey = await prisma.survey.create({
         data: {
           title: surveyTitle,
+          isFrenchVersion,
+          surveyId: frenchSurveyId,
           questions: {
             create: questions.map((q) => ({
               text: q.text,
@@ -141,6 +151,9 @@ export default function Index() {
   const [isDeleteBannerVisible, setDeleteBannerVisible] = useState(false);
   const [surveyToDelete, setSurveyToDelete] = useState(null);
   const [ansText, setAnsText] = useState(false);
+  const [isFrenchVersion, setIsFrenchVersion] = useState(false);
+  const [selectedSurveyId, setSelectedSurveyId] = useState("");
+
 
   const handleInputChange = (index, field, value) => {
     const updatedQuestions = [...questions];
@@ -245,7 +258,7 @@ export default function Index() {
   console.log("questions: ", questions)
 
   return (
-    <Page>
+    <Page fullWidth>
       {actionData?.error && (
         <Text color="red" variant="bodyMd">
           {actionData.error}
@@ -294,6 +307,25 @@ export default function Index() {
                 placeholder="Enter Your Survey Title Here"
                 requiredIndicator
               />
+              <InlineStack gap={400}>
+                <Checkbox
+                  label="Is French Version?"
+                  checked={isFrenchVersion}
+                  onChange={(value) => setIsFrenchVersion(value)}
+                />
+                {isFrenchVersion && (
+                  <Select
+                    placeholder="Select French Survey"
+                    options={surveys.map((survey) => ({
+                      label: survey.title,
+                      value: survey.id.toString(),
+                    }))}
+                    value={selectedSurveyId}
+                    onChange={(value) => setSelectedSurveyId(value)}
+                  />
+                )}
+              </InlineStack>
+
               <InlineStack alignment="center" gap={400}>
                 <Box width="90%">
                   <Text variant="headingMd" as="h2">Questions</Text>
@@ -400,7 +432,7 @@ export default function Index() {
                                   </Box>
                                   {question.isConditional || question.isTextBox ? <></> :
                                     <Box width="5%">
-                                      <Tooltip active={optIndex==0 && index == 0} content="Add Text Field?">
+                                      <Tooltip active={optIndex == 0 && index == 0} content="Add Text Field?">
                                         <Button
                                           onClick={() => {
                                             const updatedQuestions = [...questions];
@@ -426,6 +458,8 @@ export default function Index() {
 
               <input type="hidden" name="questions" value={JSON.stringify(questions)} />
               <input type="hidden" name="surveyId" value={activeSurvey ? activeSurvey.id : ""} />
+              <input type="hidden" name="isFrenchVersion" value={isFrenchVersion} />
+              <input type="hidden" name="frenchSurveyId" value={selectedSurveyId || ""} />
               <Button submit icon={SaveIcon} variant="primary">Save</Button>
             </FormLayout>
           </Card>

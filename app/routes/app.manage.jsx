@@ -20,16 +20,26 @@ import { useState, useMemo } from "react";
 import { PrismaClient } from "@prisma/client";
 import { ExportIcon } from "@shopify/polaris-icons";
 import * as XLSX from "xlsx";
+import { authenticate } from "../shopify.server";
 
 const prisma = new PrismaClient();
 
-export const loader = async () => {
-  const feedbacks = await prisma.apiProxyData.findMany();
+export const loader = async ({ request }) => {
+  await authenticate.admin(request);
+  const {session} = await authenticate.admin(request);
+  const shopDomain = session.shop;
+  console.log(shopDomain);
+  const feedbacks = await prisma.apiProxyData.findMany({
+    where: {
+      shopDomain: shopDomain
+    }
+  });
   const surveyData = await prisma.survey.findMany({
     include: {
       questions: true,
     },
   });
+  
 
   return json({ feedbacks, surveyData });
 };
@@ -47,9 +57,8 @@ export const action = async ({ request }) => {
 };
 
 
-export default function AdditionalPage() {
+export default function Manage() {
   const { feedbacks, surveyData } = useLoaderData();
-  console.log(surveyData);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState("");
   const initialFeedbacks = feedbacks.map((feedback, index) => {

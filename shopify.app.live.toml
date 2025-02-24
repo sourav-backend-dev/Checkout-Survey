@@ -3,12 +3,13 @@
 client_id = "4c844d845377ca311dbdf49b92208215"
 name = "Hatley Survey"
 handle = "hatley-survey-1"
-application_url = "https://east-spanking-lights-gay.trycloudflare.com"
+application_url = "https://electricity-italia-nickel-parents.trycloudflare.com"
 embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
 dev_store_url = "hatleydev.myshopify.com"
+include_config_on_deploy = true
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
@@ -16,16 +17,16 @@ scopes = "read_products"
 
 [auth]
 redirect_urls = [
-  "https://east-spanking-lights-gay.trycloudflare.com/auth/callback",
-  "https://east-spanking-lights-gay.trycloudflare.com/auth/shopify/callback",
-  "https://east-spanking-lights-gay.trycloudflare.com/api/auth/callback"
+  "https://electricity-italia-nickel-parents.trycloudflare.com/auth/callback",
+  "https://electricity-italia-nickel-parents.trycloudflare.com/auth/shopify/callback",
+  "https://electricity-italia-nickel-parents.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]
 api_version = "2024-10"
 
 [app_proxy]
-url = "https://east-spanking-lights-gay.trycloudflare.com/app/questions"
+url = "https://electricity-italia-nickel-parents.trycloudflare.com/app/questions"
 subpath = "questions"
 prefix = "apps"
 

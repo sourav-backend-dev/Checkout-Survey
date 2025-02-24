@@ -27,9 +27,11 @@ model Session {
 }
 
 model Survey {
-  id        Int       @id @default(autoincrement())
-  title     String    @unique
-  questions Question[]
+  id               Int       @id @default(autoincrement())
+  title            String    @unique
+  isFrenchVersion  Boolean   @default(false) 
+  surveyId         Int? 
+  questions        Question[]
 }
 
 model Question {
@@ -59,5 +61,6 @@ model ApiProxyData {
   email       String  
   answers     String  
   surveyTitle String?
+  shopDomain  String?
   createdAt   DateTime @default(now())
 }
