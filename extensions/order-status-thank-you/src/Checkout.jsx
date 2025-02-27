@@ -47,7 +47,7 @@ function ProductReview() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [shouldProceed, setShouldProceed] = useState(true); // State to track if we should proceed
   const { survey_title } = useSettings();  // Get the survey title from settings
-  // // console.log("survey title is ", survey_title);  // Log survey title
+   console.log("survey title is ", survey_title);  // Log survey title
   const userEmail = api.buyerIdentity.email.current;
   const [textInput, setTextInput] = useState(''); // State to store text input
   const [submitted, setSubmitted] = useState(false);
@@ -57,7 +57,7 @@ function ProductReview() {
   const fetchQuizData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://electricity-italia-nickel-parents.trycloudflare.com/app/questions', {
+      const response = await fetch('https://caroline-excluded-lovers-allan.trycloudflare.com/app/questions', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -87,7 +87,8 @@ function ProductReview() {
           }
         } else {
           // Find the survey that matches `survey_title`
-          quiz = data.surveys.find(survey => survey.title === survey_title);
+          console.log(survey_title)
+          quiz = data.surveys.find(survey => survey.title === "EN-Post-Checkout");
         }
   
         if (quiz) {
@@ -115,7 +116,7 @@ function ProductReview() {
     // console.log("=======", updateAnswers);
     setLoading(true);
     try {
-      const response = await fetch('https://electricity-italia-nickel-parents.trycloudflare.com/app/proxy', {
+      const response = await fetch('https://caroline-excluded-lovers-allan.trycloudflare.com/app/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -159,9 +160,8 @@ function ProductReview() {
           questionNumber: currentQuestionIndex + 1,
           answer: selectedOption.text,
         };
-        // console.log('Updated answers:', updatedAnswers);
 
-        if (currentQuestion.isConditional && selectedOption.text.toLowerCase() === 'no') {
+        if (currentQuestion.isConditional && selectedOption.text.toLowerCase() === 'no' || currentQuestion.isConditional && selectedOption.text.toLowerCase() === 'non') {
           setShouldProceed(false);
           handleSubmit(updatedAnswers);
         }

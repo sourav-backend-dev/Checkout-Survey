@@ -26,20 +26,39 @@ const prisma = new PrismaClient();
 
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
-  const {session} = await authenticate.admin(request);
-  const shopDomain = session.shop;
-  console.log(shopDomain);
+  const { session } = await authenticate.admin(request);
+  // const shopDomain = session.shop;
+  // console.log(shopDomain);
+  const { admin } = await authenticate.admin(request);
+
+  const response = await admin.graphql(
+    `#graphql
+  query {
+  shop{
+    url
+  }
+}`,
+  );
+
+  const data = await response.json();
+  const url = data.data.shop.url
+  const shopDomain = url.split("https://")[1];
   const feedbacks = await prisma.apiProxyData.findMany({
     where: {
-      shopDomain: shopDomain
+      OR: [
+        { shopDomain: shopDomain },  // Look for the domain without '/en'
+        { shopDomain: `${shopDomain}/en` },  // Look for the domain with '/en'
+        { shopDomain: `${shopDomain}/fr` }  // Look for the domain with '/fr'
+      ]
     }
   });
+  console.log("regtgrty",shopDomain)
   const surveyData = await prisma.survey.findMany({
     include: {
       questions: true,
     },
   });
-  
+
 
   return json({ feedbacks, surveyData });
 };
@@ -59,6 +78,7 @@ export const action = async ({ request }) => {
 
 export default function Manage() {
   const { feedbacks, surveyData } = useLoaderData();
+  console.log("sdgsdf",feedbacks)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState("");
   const initialFeedbacks = feedbacks.map((feedback, index) => {
@@ -232,7 +252,7 @@ export default function Manage() {
                       </Button>
                     </Form>
                   </InlineStack>
-                </IndexTable.Cell>  
+                </IndexTable.Cell>
               </IndexTable.Row>
             ))}
           </IndexTable>
@@ -325,7 +345,7 @@ export default function Manage() {
             <Select
               label="Select Export Format"
               options={[
-                { label: "Select an Option", value: "", disabled:true },
+                { label: "Select an Option", value: "", disabled: true },
                 { label: "Excel", value: "excel" },
                 { label: "CSV", value: "csv" },
                 { label: "JSON", value: "json" },

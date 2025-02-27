@@ -8,100 +8,127 @@ import {
     Tooltip,
     Legend,
     ResponsiveContainer,
-    LineChart,
-    Line,
     PieChart,
     Pie,
-    Cell,
+    Cell
 } from "recharts";
 import { BlockStack, InlineStack, Pagination, Text } from "@shopify/polaris";
 
-const SurveyPaiChart = ({ surveyData }) => {
+const SurveyBarChart = ({ surveyData, language }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const questionsPerPage = 1;
 
     const indexOfLastQuestion = currentPage * questionsPerPage;
     const indexOfFirstQuestion = indexOfLastQuestion - questionsPerPage;
-    const filteredSurveyData = {
-        ...surveyData[0],
-        questions: surveyData[0].questions.filter((question) => !question.isTextBox),
-    };
-    const currentQuestions = filteredSurveyData.questions.slice(
-        indexOfFirstQuestion,
-        indexOfLastQuestion
-    );
 
     const handlePagination = (page) => {
         setCurrentPage(page);
     };
 
+    // Filter the survey data based on the selected language (English or French)
+    const filteredSurveyData = surveyData.filter(
+        (survey) =>
+            (language === "en" && survey.isFrenchVersion) ||
+            (language === "fr" && !survey.isFrenchVersion)
+    );
+
     return (
         <div>
-            {currentQuestions.map((question, index) => {
-                // Total users who took the survey
-                const totalUsers = surveyData[0].totalUsers;
-
-                let chartData;
-                if (question.isConditional) {
-                    // Get "Yes" count
-                    const yesAnswer = question.answersCount.find(
-                        (ans) => ans.answer.toLowerCase() === "yes"
-                    );
-                    const yesCount = yesAnswer ? yesAnswer.count : 0;
-                    const noCount = totalUsers - yesCount;
-
-                    // Construct conditional data
-                    chartData = [
-                        { answer: "Yes", count: yesCount },
-                        { answer: "No", count: noCount },
-                    ];
-                } else {
+            {filteredSurveyData.map((survey, surveyIndex) => {
+                // Filter out questions with only "Other" answers
+                const validQuestions = survey.questions.filter((question) => {
                     // Filter out answers that start with "Other"
-                    chartData = question.answersCount.filter(
+                    const filteredAnswers = question.answersCount.filter(
                         (ans) => !ans.answer.toLowerCase().startsWith("other")
                     );
-                }
+                    return filteredAnswers.length > 0; // Keep only questions with valid answers
+                });
+
+                // Slice valid questions for pagination
+                const currentQuestions = validQuestions.slice(indexOfFirstQuestion, indexOfLastQuestion);
 
                 return (
-                    <BlockStack gap={300}>
-                        <Text variant="headingLg" as="h5">Q{currentPage}: {question.text}</Text>
-                        <ResponsiveContainer width="100%" height={400}>
-                            <PieChart>
-                                <Pie
-                                    data={chartData}
-                                    dataKey="count"
-                                    nameKey="answer"
-                                    cx="50%"
-                                    cy="50%"
-                                    outerRadius={150}
-                                    fill="#8884d8"
-                                    label
-                                >
-                                    {chartData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={["#0088FE", "#00C49F", "#FFBB28", "#FF8042"][index % 4]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
+                    <div key={surveyIndex}>
+                        {/* <Text variant="headingLg" as="h5">
+                            {language === "fr" ? "French Survey" : "English Survey"}
+                        </Text> */}
+                        {currentQuestions.map((question, index) => {
+                            // Total users who took the survey
+                            const totalUsers = survey.totalUsers;
+                            let chartData;
 
-                    </BlockStack>
+                            // Filter out answers that start with "Other"
+                            const filteredAnswers = question.answersCount.filter(
+                                (ans) => !ans.answer.toLowerCase().startsWith("other")
+                            );
+
+                            // Check if there are any valid answers left after filtering "Other"
+                            if (filteredAnswers.length === 0) {
+                                return null; // This should never happen due to earlier filtering
+                            }
+
+                            if (question.isConditional) {
+                                // Get "Yes" count
+                                const yesAnswer = question.answersCount.find(
+                                    (ans) => ans.answer.toLowerCase() === "yes"
+                                );
+                                const yesCount = yesAnswer ? yesAnswer.count : 0;
+                                const noCount = totalUsers - yesCount;
+
+                                // Construct conditional data
+                                chartData = [
+                                    { answer: "Yes", count: yesCount },
+                                    { answer: "No", count: noCount },
+                                ];
+                            } else {
+                                // Use the filtered answers for the chart data
+                                chartData = filteredAnswers;
+                            }
+
+                            return (
+                                <BlockStack gap={300} key={question.id}>
+                                    <Text variant="headingLg" as="h5">
+                                        Q{currentPage}: {question.text}
+                                    </Text>
+                                    <ResponsiveContainer width="100%" height={400}>
+                                        <PieChart>
+                                            <Pie
+                                                data={chartData}
+                                                dataKey="count"
+                                                nameKey="answer"
+                                                cx="50%"
+                                                cy="50%"
+                                                outerRadius={150}
+                                                fill="#8884d8"
+                                                label
+                                            >
+                                                {chartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={["#0088FE", "#00C49F", "#FFBB28", "#FF8042"][index % 4]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip />
+                                            <Legend />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </BlockStack>
+                            );
+                        })}
+
+                        <InlineStack align="center">
+                            <Pagination
+                                hasPrevious={currentPage > 1}
+                                label={currentPage + " / " + validQuestions.length}
+                                onPrevious={() => handlePagination(currentPage - 1)}
+                                hasNext={currentPage < Math.ceil(validQuestions.length / questionsPerPage)}
+                                onNext={() => handlePagination(currentPage + 1)}
+                            />
+                        </InlineStack>
+                    </div>
                 );
             })}
-            <InlineStack align="center">
-                <Pagination
-                    hasPrevious={currentPage > 1}
-                    label={currentPage+' / '+filteredSurveyData.questions.length}
-                    onPrevious={() => handlePagination(currentPage - 1)}
-                    hasNext={
-                        currentPage < Math.ceil(filteredSurveyData.questions.length / questionsPerPage)
-                    }
-                    onNext={() => handlePagination(currentPage + 1)}
-                />
-            </InlineStack>
         </div>
     );
+
 };
 
-export default SurveyPaiChart;
+export default SurveyBarChart;

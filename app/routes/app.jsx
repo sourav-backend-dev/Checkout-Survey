@@ -23,7 +23,7 @@ export default function App() {
             Home
           </Link>
           <Link to="/app/manage">Manage Feedbacks</Link>
-          {/* <Link to="/app/visualize">Visualization</Link> */}
+          <Link to="/app/visualize">Visualization</Link>
         </NavMenu>
         <Outlet />
       </AppProvider>

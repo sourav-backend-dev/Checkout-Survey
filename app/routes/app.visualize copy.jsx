@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Box, Button, ButtonGroup, Card, InlineStack, Page, Text, Icon, Tooltip } from '@shopify/polaris';
+import { Box, Button, ButtonGroup, Card, InlineStack, Page } from '@shopify/polaris';
 import SurveyChart from './component/SurveyBarChart';
 import { json, useLoaderData } from '@remix-run/react';
 import { PrismaClient } from '@prisma/client';
@@ -9,28 +9,22 @@ import SurveyPaiChart from './component/SurveyPaiChart';
 import {
     ChartDonutIcon,
     ChartLineIcon,
-    ChartVerticalIcon,
-    ReplaceIcon,
-    ToggleOffIcon,
-    ToggleOnIcon
-} from '@shopify/polaris-icons';
+    ChartVerticalIcon
+  } from '@shopify/polaris-icons';
 import { authenticate } from '../shopify.server';
 
 const prisma = new PrismaClient();
 
+
 export const loader = async ({ request }) => {
-    await authenticate.admin(request);
-    const { session } = await authenticate.admin(request);
-    const shopDomain = session.shop;
-    const feedbacks = await prisma.apiProxyData.findMany({
-        where: {
-            OR: [
-                { shopDomain: shopDomain },  // Look for the domain without '/en'
-                { shopDomain: `${shopDomain}/en` },  // Look for the domain with '/en'
-                { shopDomain: `${shopDomain}/fr` }  // Look for the domain with '/fr'
-            ]
-        }
-    });
+  await authenticate.admin(request);
+  const {session} = await authenticate.admin(request);
+  const shopDomain = session.shop;
+  const feedbacks = await prisma.apiProxyData.findMany({
+    where: {
+      shopDomain: shopDomain
+    }
+  });
     const surveyData = await prisma.survey.findMany({
         include: {
             questions: true,
@@ -42,50 +36,23 @@ export const loader = async ({ request }) => {
 
 const TestCharts = () => {
     const { feedbacks, surveyData } = useLoaderData();
-    console.log(feedbacks, "feedbacks");
-    console.log(surveyData, "survey data");
-
+    console.log(feedbacks,"feedbacks");
+    console.log(surveyData,"survey data");
     const formattedData = formatSurveyData(feedbacks, surveyData);
-
     const [activeButtonIndex, setActiveButtonIndex] = useState('bar');
-    const [language, setLanguage] = useState('en');  // Language state
-
     const handleButtonClick = useCallback(
         (index) => {
             if (activeButtonIndex === index) return;
             setActiveButtonIndex(index);
         },
-        [activeButtonIndex]
+        [activeButtonIndex],
     );
-
-    const toggleLanguage = () => {
-        setLanguage((prevLanguage) => (prevLanguage === 'en' ? 'fr' : 'en'));
-    };
+console.log(formattedData,"formatted Data")
 
     return (
-        <Page
-            title="Visualization"
-            backAction={{ content: "Back", url: "/app/" }}
-            primaryAction={<Button variant={language === 'en' ? 'secondary' : 'primary'} icon={language === 'en' ? ToggleOffIcon : ToggleOnIcon} onClick={toggleLanguage}>{language === 'en' ? 'English' : 'French'}</Button>}
-            // primaryAction={{
-            //     content: (
-            //         <Button variant={language === 'en' ? 'primary' : 'secondary'}>ENGLISH</Button>
-            //         // <Button variant={language === 'en' ? 'primary' : 'secondary' }>
-            //         // <InlineStack gap={200}>
-            //         //     <Icon
-            //         //         source={language === 'en' ? ToggleOffIcon : ToggleOnIcon}
-            //         //         tone={language === 'en' ? 'success' : 'secondary'}
-            //         //     />
-            //         //     <Text>{language === 'en' ? "English" : "French"}</Text> 
-            //         // </InlineStack>
-            //         // </Button>
-            //     ),
-            //     onAction: toggleLanguage,
-            //     primary: language === 'en' ? false : true,
-            // }}
-        >
+        <Page>
             <Card padding={0}>
-                <InlineStack align='center' blockAlign="center">
+                <InlineStack align='center'>
                     <ButtonGroup variant="segmented" connectedTop>
                         <Button
                             pressed={activeButtonIndex === 'bar'}
@@ -93,7 +60,7 @@ const TestCharts = () => {
                             size='large'
                             icon={ChartVerticalIcon}
                         >
-                            {language === 'en' ? 'Bar Chart' : 'Graphique à barres'}
+                            Bar Chart
                         </Button>
                         <Button
                             pressed={activeButtonIndex === 'line'}
@@ -101,7 +68,7 @@ const TestCharts = () => {
                             size='large'
                             icon={ChartLineIcon}
                         >
-                            {language === 'en' ? 'Line Chart' : 'Graphique linéaire'}
+                            Line Chart
                         </Button>
                         <Button
                             pressed={activeButtonIndex === 'pai'}
@@ -109,23 +76,20 @@ const TestCharts = () => {
                             size='large'
                             icon={ChartDonutIcon}
                         >
-                            {language === 'en' ? 'Pai Chart' : 'Graphique circulaire'}
+                            Pai Chart
                         </Button>
                     </ButtonGroup>
                 </InlineStack>
-
-
-
                 <Box padding={300}>
-                    {activeButtonIndex === 'bar' && (
-                        <SurveyBarChart surveyData={formattedData} language={language} />
-                    )}
-                    {activeButtonIndex === 'line' && (
-                        <SurveyLineChart surveyData={formattedData} language={language} />
-                    )}
-                    {activeButtonIndex === 'pai' && (
-                        <SurveyPaiChart surveyData={formattedData} language={language} />
-                    )}
+                    {activeButtonIndex == 'bar' &&
+                        <SurveyBarChart surveyData={formattedData} />
+                    }
+                    {activeButtonIndex == 'line' &&
+                        <SurveyLineChart surveyData={formattedData} />
+                    }
+                    {activeButtonIndex == 'pai' &&
+                        <SurveyPaiChart surveyData={formattedData} />
+                    }
                 </Box>
             </Card>
         </Page>
@@ -134,13 +98,15 @@ const TestCharts = () => {
 
 const formatSurveyData = (feedbacks, surveyData) => {
     const totalUsers = feedbacks.length; // Calculate total users who submitted responses
-    console.log("Feedback", feedbacks)
+
     const formattedData = surveyData.map(survey => {
         const questionsWithAnswers = survey.questions.map(question => {
             const answersCount = {};
+
             feedbacks.forEach(feedback => {
                 const answers = JSON.parse(feedback.answers);
                 const answer = answers.find(a => a.questionTitle === question.text)?.answer;
+                console.log("Answer",answers.find( a => a.questionNumber),question)
 
                 if (answer) {
                     if (question.isMultiChoice) {
@@ -168,5 +134,4 @@ const formatSurveyData = (feedbacks, surveyData) => {
 
     return formattedData;
 };
-
 export default TestCharts;
