@@ -62,5 +62,6 @@ model ApiProxyData {
   answers     String  
   surveyTitle String?
   shopDomain  String?
+  orderId     String?
   createdAt   DateTime @default(now())
 }

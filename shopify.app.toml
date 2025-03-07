@@ -12,7 +12,7 @@ dev_store_url = "testtakewithfood.myshopify.com"
 include_config_on_deploy = true
 
 [access_scopes]
-scopes = "read_products"
+scopes = "read_products,read_orders"
 
 [auth]
 redirect_urls = [

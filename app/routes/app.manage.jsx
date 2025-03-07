@@ -13,6 +13,7 @@ import {
   Badge,
   ButtonGroup,
   DatePicker,
+  Pagination,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
 import { Form, json, useLoaderData } from "@remix-run/react";
@@ -26,20 +27,40 @@ const prisma = new PrismaClient();
 
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
-  const {session} = await authenticate.admin(request);
-  const shopDomain = session.shop;
-  console.log(shopDomain);
+  const { session } = await authenticate.admin(request);
+  // const shopDomain = session.shop;
+  // console.log(shopDomain);
+  const { admin } = await authenticate.admin(request);
+
+  const response = await admin.graphql(
+    `#graphql
+  query {
+  shop{
+    url
+  }
+}`,
+  );
+
+  const data = await response.json();
+  const url = data.data.shop.url
+  const shopDomain = url.split("https://")[1];
+  //const shopDomain = "uk.hatley.com";
   const feedbacks = await prisma.apiProxyData.findMany({
     where: {
-      shopDomain: shopDomain
+      OR: [
+        { shopDomain: shopDomain },  // Look for the domain without '/en'
+        { shopDomain: `${shopDomain}/en` },  // Look for the domain with '/en'
+        { shopDomain: `${shopDomain}/fr` }  // Look for the domain with '/fr'
+      ]
     }
   });
+  console.log("regtgrty", shopDomain)
   const surveyData = await prisma.survey.findMany({
     include: {
       questions: true,
     },
   });
-  
+
 
   return json({ feedbacks, surveyData });
 };
@@ -59,6 +80,7 @@ export const action = async ({ request }) => {
 
 export default function Manage() {
   const { feedbacks, surveyData } = useLoaderData();
+  console.log("sdgsdf", feedbacks)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState("");
   const initialFeedbacks = feedbacks.map((feedback, index) => {
@@ -81,6 +103,10 @@ export default function Manage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Customize the number of items per page
+  const [quizStatusFilter, setQuizStatusFilter] = useState(""); // Add state for quiz status filter
+
 
   const handleSearchChange = (value) => setSearchTerm(value);
 
@@ -90,6 +116,7 @@ export default function Manage() {
     setSortOrder(order);
   };
 
+
   const filteredFeedbacks = useMemo(() => {
     let result = initialFeedbacks;
 
@@ -98,6 +125,24 @@ export default function Manage() {
         feedback.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
+
+    // Apply Quiz Status filter
+    if (quizStatusFilter) {
+      result = result.filter((feedback) => {
+        const answerCount = feedback.answers.length;
+        const totalQuestions = surveyData[0]?.questions.length;
+
+        if (quizStatusFilter === "complete") {
+          return answerCount === totalQuestions;
+        } else if (quizStatusFilter === "incomplete") {
+          return answerCount === 0;
+        } else if (quizStatusFilter === "partially") {
+          return answerCount > 0 && answerCount < totalQuestions;
+        }
+        return true;
+      });
+    }
+
 
     result = result.sort((a, b) => {
       if (sortField === "email") {
@@ -114,7 +159,20 @@ export default function Manage() {
 
 
     return result;
-  }, [searchTerm, sortField, sortOrder, initialFeedbacks]);
+  }, [searchTerm, sortField, sortOrder, initialFeedbacks, quizStatusFilter, surveyData]);
+
+  // Calculate total pages based on feedbacks length and itemsPerPage
+  const totalPages = Math.ceil(filteredFeedbacks.length / itemsPerPage);
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
+
+  const paginatedFeedbacks = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = currentPage * itemsPerPage;
+    return filteredFeedbacks.slice(startIndex, endIndex);
+  }, [filteredFeedbacks, currentPage]);
 
   const handleExport = () => {
     // Filter feedbacks based on the selected date range
@@ -176,7 +234,7 @@ export default function Manage() {
       <Card>
         <BlockStack gap={400}>
           <InlineStack alignment="center" gap={400}>
-            <Box width="73%">
+            <Box width="60%">
               <TextField
                 value={searchTerm}
                 onChange={handleSearchChange}
@@ -184,7 +242,7 @@ export default function Manage() {
                 autoComplete="off"
               />
             </Box>
-            <Box width="25%">
+            <Box width="15%">
               <Select
                 options={[
                   { label: "Email Ascending", value: "email-asc" },
@@ -199,6 +257,18 @@ export default function Manage() {
               />
 
             </Box>
+            <Box width="20%">
+              <Select
+                options={[
+                  { label: "All Quizzes", value: "" },
+                  { label: "Completed", value: "complete" },
+                  { label: "Not Submitted", value: "incomplete" },
+                  { label: "Partially Completed", value: "partially" }
+                ]}
+                value={quizStatusFilter}
+                onChange={setQuizStatusFilter}
+              />
+            </Box>
           </InlineStack>
           <IndexTable
             resourceName={{ singular: "feedback", plural: "feedbacks" }}
@@ -208,11 +278,12 @@ export default function Manage() {
               { title: "Email" },
               { title: "Date" },
               { title: "Time (GMT+5:30)" },
+              { title: "Quiz Status" },
               { title: "Action", alignment: "center" },
             ]}
             selectable={false}
           >
-            {filteredFeedbacks.map(({ sr, id, email, date, time, answers }, index) => (
+            {paginatedFeedbacks.map(({ sr, id, email, date, time, answers }, index) => (
               <IndexTable.Row id={id} key={id} position={index}>
                 <IndexTable.Cell>
                   <Text variation="strong">{sr}</Text>
@@ -221,8 +292,22 @@ export default function Manage() {
                 <IndexTable.Cell>{date}</IndexTable.Cell>
                 <IndexTable.Cell>{time}</IndexTable.Cell>
                 <IndexTable.Cell>
+                  {answers.length === 0 ? (
+                    <Badge progress="incomplete" tone="critical">Not Submitted</Badge>
+                  ) : answers.length === surveyData[0]?.questions.length ? (
+                    <Badge progress="complete" tone="success">Completely </Badge>
+                  ) : (
+                    <Badge progress="partiallyComplete" tone="warning">Partially</Badge>
+                  )}
+
+                </IndexTable.Cell>
+                <IndexTable.Cell>
                   <InlineStack align="center" gap={300}>
-                    <Button onClick={() => setSelectedFeedback(feedbacks[index])} variant="primary">
+                    <Button onClick={() => {
+                      //console.log("index feeback",feedbacks[sr-1],sr);  // Log the feedback to the console
+                      setSelectedFeedback(feedbacks[sr - 1]);  // Set the selected feedback
+                    }}
+                      variant="primary">
                       Details
                     </Button>
                     <Form method="post">
@@ -232,10 +317,19 @@ export default function Manage() {
                       </Button>
                     </Form>
                   </InlineStack>
-                </IndexTable.Cell>  
+                </IndexTable.Cell>
               </IndexTable.Row>
             ))}
           </IndexTable>
+          <InlineStack align="center">
+            <Pagination
+              hasPrevious={currentPage > 1}
+              hasNext={currentPage < totalPages}
+              onPrevious={() => handlePageChange(currentPage - 1)}
+              onNext={() => handlePageChange(currentPage + 1)}
+              label={`Page ${currentPage} of ${totalPages}`}
+            />
+          </InlineStack>
         </BlockStack>
       </Card>
       {selectedFeedback && (
@@ -325,7 +419,7 @@ export default function Manage() {
             <Select
               label="Select Export Format"
               options={[
-                { label: "Select an Option", value: "", disabled:true },
+                { label: "Select an Option", value: "", disabled: true },
                 { label: "Excel", value: "excel" },
                 { label: "CSV", value: "csv" },
                 { label: "JSON", value: "json" },

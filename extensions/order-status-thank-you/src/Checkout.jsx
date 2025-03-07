@@ -25,6 +25,8 @@ export { orderDetailsBlock };
 
 function ProductReview() {
   const api = useApi();
+  const id = api.orderConfirmation.current.order.id;
+  const orderId = id.match(/\d+/g).pop();
   // const [isFrench, setIsFrench] = useState(false);
   // useEffect(() => {
   //   if (api?.localization?.language?.current?.isoCode.slice(0, 2) === 'fr') {
@@ -47,7 +49,7 @@ function ProductReview() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [shouldProceed, setShouldProceed] = useState(true); // State to track if we should proceed
   const { survey_title } = useSettings();  // Get the survey title from settings
-  // // console.log("survey title is ", survey_title);  // Log survey title
+   console.log("survey title is ", survey_title);  // Log survey title
   const userEmail = api.buyerIdentity.email.current;
   const [textInput, setTextInput] = useState(''); // State to store text input
   const [submitted, setSubmitted] = useState(false);
@@ -56,8 +58,9 @@ function ProductReview() {
 
   const fetchQuizData = async () => {
     setLoading(true);
+    nextSubmit([]);
     try {
-      const response = await fetch('https://electricity-italia-nickel-parents.trycloudflare.com/app/questions', {
+      const response = await fetch('https://ve-republicans-behind-powerful.trycloudflare.com/app/questions', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -87,6 +90,7 @@ function ProductReview() {
           }
         } else {
           // Find the survey that matches `survey_title`
+          console.log(survey_title)
           quiz = data.surveys.find(survey => survey.title === survey_title);
         }
   
@@ -108,6 +112,7 @@ function ProductReview() {
 
   useLayoutEffect(() => {
     fetchQuizData();
+    console.log('called layout')
   }, [survey_title]);
 
 
@@ -115,20 +120,21 @@ function ProductReview() {
     // console.log("=======", updateAnswers);
     setLoading(true);
     try {
-      const response = await fetch('https://electricity-italia-nickel-parents.trycloudflare.com/app/proxy', {
+      const response = await fetch('https://ve-republicans-behind-powerful.trycloudflare.com/app/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ shopDomain: shopDomain.replace(/^https?:\/\//, ""), email: userEmail, surveyTitle: survey_title, answers: updateAnswers }), // Send email along with answers
+        body: JSON.stringify({ shopDomain: shopDomain.replace(/^https?:\/\//, ""), email: userEmail, surveyTitle: survey_title, orderId: orderId, answers: updateAnswers }), // Send email along with answers
       });
 
       if (!response.ok) {
+        console.log('Error')
         throw new Error('Failed to submit review');
       }
 
       const result = await response.json();
-      // console.log('Server response:', result);
+      console.log('Server response:', result);
       setShouldProceed(false);
       setSubmitted(true);
     } catch (error) {
@@ -138,6 +144,34 @@ function ProductReview() {
     }
   }
 
+
+  async function nextSubmit(updateAnswers = updateAnswers) {
+     console.log("=======", updateAnswers);
+     setLoading(true);
+    try {
+      const response = await fetch('https://ve-republicans-behind-powerful.trycloudflare.com/app/proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ shopDomain: shopDomain.replace(/^https?:\/\//, ""), email: userEmail, surveyTitle: survey_title, orderId: orderId, answers: updateAnswers }), // Send email along with answers
+      });
+
+      if (!response.ok) {
+        console.log('Error')
+        throw new Error('Failed to submit review');
+      }
+
+      const result = await response.json();
+      console.log('Server response:', result);
+      //setShouldProceed(false);
+      //setSubmitted(true);
+    } catch (error) {
+      console.error("Error submitting review:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   if (productReviewed || productReviewedLoading) {
     return null;
@@ -159,12 +193,16 @@ function ProductReview() {
           questionNumber: currentQuestionIndex + 1,
           answer: selectedOption.text,
         };
-        // console.log('Updated answers:', updatedAnswers);
 
-        if (currentQuestion.isConditional && selectedOption.text.toLowerCase() === 'no') {
+        if (currentQuestion.isConditional && selectedOption.text.toLowerCase() === 'no' || currentQuestion.isConditional && selectedOption.text.toLowerCase() === 'non') {
           setShouldProceed(false);
           handleSubmit(updatedAnswers);
         }
+        else
+        {
+          nextSubmit(updatedAnswers)
+        }
+        console.log("updatedAnswersss",updatedAnswers)
         return updatedAnswers;
       });
 
@@ -199,12 +237,18 @@ function ProductReview() {
         questionNumber: currentQuestionIndex + 1,
         answer: formattedAnswers.join(','), // Join answers with commas
       };
-      // console.log('Updated answers:', updatedAnswers); // Log updated answers
+
+        nextSubmit(updatedAnswers)
+
+       console.log('Updated Mul answersss:', updatedAnswers); // Log updated answers
       return updatedAnswers;
     });
   };
 
+  
   const handleNext = () => {
+    console.log("answer on handle review",productReview)
+    //nextSubmit(answers)
     if (currentQuestionIndex < quizData.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setTextInput(''); // Reset text input for the next question
@@ -246,6 +290,7 @@ function ProductReview() {
   };
 
 
+  
   if (!shouldProceed) {
     return (
       <View border="base" padding="base" borderRadius="base">
