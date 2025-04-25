@@ -106,8 +106,16 @@ export default function Manage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Customize the number of items per page
   const [quizStatusFilter, setQuizStatusFilter] = useState(""); // Add state for quiz status filter
+  const [month, setMonth] = useState(selectedDates.start.getMonth());
+  const [year, setYear] = useState(selectedDates.start.getFullYear());
+  
 
+  const handleMonthChange = (newMonth, newYear) => {
+    setMonth(newMonth);
+    setYear(newYear);
+  };
 
+  
   const handleSearchChange = (value) => setSearchTerm(value);
 
   const handleSortChange = (value) => {
@@ -410,7 +418,16 @@ export default function Manage() {
             <Card>
               <BlockStack gap={400}>
                 <InlineStack alignment="center" gap={400}>
-                  <DatePicker month={selectedDates.start.getMonth()} year={selectedDates.start.getFullYear()} onChange={setSelectedDates} selected={selectedDates} allowRange />
+                  <DatePicker
+                    month={month}
+                    year={year}
+                    onChange={setSelectedDates}
+                    onMonthChange={handleMonthChange}
+                    selected={selectedDates}
+                    allowRange
+                  />
+
+                  {/* <DatePicker month={selectedDates.start.getMonth()} year={selectedDates.start.getFullYear()} onChange={setSelectedDates} selected={selectedDates} allowRange  /> */}
                 </InlineStack>
               </BlockStack>
             </Card>
